@@ -20,12 +20,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.todolist.data.export.ExportImportManager
 import com.example.todolist.data.local.TodoDatabase
+import com.example.todolist.data.repository.StatisticsRepository
 import com.example.todolist.data.repository.SubtaskRepository
 import com.example.todolist.data.repository.TaskListRepository
 import com.example.todolist.data.repository.TodoRepository
 import com.example.todolist.notification.NotificationScheduler
-import com.example.todolist.ui.screens.TodoListScreen
+import com.example.todolist.ui.navigation.AppNavigation
 import com.example.todolist.ui.theme.TodolistTheme
+import com.example.todolist.ui.viewmodel.CalendarViewModel
+import com.example.todolist.ui.viewmodel.StatisticsViewModel
 import com.example.todolist.ui.viewmodel.TodoViewModel
 
 class MainActivity : ComponentActivity() {
@@ -49,14 +52,25 @@ class MainActivity : ComponentActivity() {
         val repository = TodoRepository(database.todoDao())
         val taskListRepository = TaskListRepository(database.taskListDao())
         val subtaskRepository = SubtaskRepository(database.subtaskDao())
-        
+        val statisticsRepository = StatisticsRepository(database.todoDao())
+
         notificationScheduler = NotificationScheduler(this)
         exportImportManager = ExportImportManager(this, repository, taskListRepository, subtaskRepository)
 
-        val viewModel: TodoViewModel = ViewModelProvider(
+        val todoViewModel: TodoViewModel = ViewModelProvider(
             this,
             TodoViewModel.Factory(repository, taskListRepository, subtaskRepository)
         )[TodoViewModel::class.java]
+
+        val statisticsViewModel: StatisticsViewModel = ViewModelProvider(
+            this,
+            StatisticsViewModel.Factory(statisticsRepository, repository)
+        )[StatisticsViewModel::class.java]
+
+        val calendarViewModel: CalendarViewModel = ViewModelProvider(
+            this,
+            CalendarViewModel.Factory(repository)
+        )[CalendarViewModel::class.java]
 
         // Request notification permission for Android 13+
         askNotificationPermission()
@@ -67,12 +81,14 @@ class MainActivity : ComponentActivity() {
 
             TodolistTheme(darkTheme = isDarkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TodoListScreen(
-                        viewModel = viewModel,
-                        isDarkTheme = isDarkTheme,
-                        onToggleTheme = { isDarkTheme = !isDarkTheme },
+                    AppNavigation(
+                        todoViewModel = todoViewModel,
+                        statisticsViewModel = statisticsViewModel,
+                        calendarViewModel = calendarViewModel,
                         notificationScheduler = notificationScheduler,
-                        exportImportManager = exportImportManager
+                        exportImportManager = exportImportManager,
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = { isDarkTheme = !isDarkTheme }
                     )
                 }
             }

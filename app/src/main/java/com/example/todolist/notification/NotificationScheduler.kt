@@ -120,4 +120,62 @@ class NotificationScheduler(private val context: Context) {
             pendingIntent
         )
     }
+
+    fun scheduleMultipleReminders(todo: TodoItem, reminderTimes: List<Long>) {
+        reminderTimes.forEachIndexed { index, reminderTime ->
+            if (reminderTime > System.currentTimeMillis()) {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val intent = Intent(context, ReminderBroadcastReceiver::class.java).apply {
+                    putExtra("todo_id", todo.id)
+                    putExtra("todo_title", todo.title)
+                    putExtra("todo_description", todo.description)
+                    putExtra("reminder_index", index)
+                }
+
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    todo.id * 1000 + index,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        reminderTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        reminderTime,
+                        pendingIntent
+                    )
+                }
+            }
+        }
+    }
+
+    fun cancelAllReminders(todoId: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        // Cancel main reminder
+        val mainIntent = Intent(context, ReminderBroadcastReceiver::class.java)
+        val mainPendingIntent = PendingIntent.getBroadcast(
+            context,
+            todoId,
+            mainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(mainPendingIntent)
+
+        // Cancel recurring reminder
+        val recurringIntent = Intent(context, ReminderBroadcastReceiver::class.java)
+        val recurringPendingIntent = PendingIntent.getBroadcast(
+            context,
+            todoId + 10000,
+            recurringIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(recurringPendingIntent)
+    }
 }

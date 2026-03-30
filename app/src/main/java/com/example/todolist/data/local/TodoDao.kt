@@ -7,8 +7,12 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.todolist.data.model.Category
+import com.example.todolist.data.model.CategoryStatisticResult
+import com.example.todolist.data.model.DailyStatisticResult
 import com.example.todolist.data.model.Priority
+import com.example.todolist.data.model.PriorityStatisticResult
 import com.example.todolist.data.model.TodoItem
+import com.example.todolist.data.model.WeeklyStatisticResult
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -97,4 +101,44 @@ interface TodoDao {
     // Update sort order
     @Query("UPDATE todo_items SET sortOrder = :sortOrder WHERE id = :id")
     suspend fun updateSortOrder(id: Int, sortOrder: Int)
+
+    // Statistics by category
+    @Query("""
+        SELECT category, COUNT(*) as total, 
+        SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed 
+        FROM todo_items GROUP BY category
+    """)
+    fun getStatisticsByCategory(): Flow<List<CategoryStatisticResult>>
+
+    // Statistics by priority
+    @Query("""
+        SELECT priority, COUNT(*) as total,
+        SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed
+        FROM todo_items GROUP BY priority
+    """)
+    fun getStatisticsByPriority(): Flow<List<PriorityStatisticResult>>
+
+    // Daily statistics for last 30 days
+    @Query("""
+        SELECT date(createdAt/1000, 'unixepoch') as date,
+        COUNT(*) as created,
+        SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed
+        FROM todo_items 
+        WHERE createdAt >= :startDate
+        GROUP BY date(createdAt/1000, 'unixepoch')
+        ORDER BY date DESC
+    """)
+    fun getDailyStatistics(startDate: Long): Flow<List<DailyStatisticResult>>
+
+    // Weekly statistics for last 12 weeks
+    @Query("""
+        SELECT strftime('%Y-%W', createdAt/1000, 'unixepoch') as week,
+        COUNT(*) as created,
+        SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed
+        FROM todo_items
+        WHERE createdAt >= :startDate
+        GROUP BY week
+        ORDER BY week DESC
+    """)
+    fun getWeeklyStatistics(startDate: Long): Flow<List<WeeklyStatisticResult>>
 }

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">todolist</string>
+    <string name="widget_description">View and manage your todo list</string>
 </resources>
