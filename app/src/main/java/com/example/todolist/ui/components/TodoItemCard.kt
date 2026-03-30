@@ -19,6 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -32,9 +35,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.todolist.data.model.RecurrenceType
 import com.example.todolist.data.model.TodoItem
 import com.example.todolist.data.model.color
 import java.text.SimpleDateFormat
@@ -46,6 +51,7 @@ import java.util.concurrent.TimeUnit
 fun TodoItemCard(
     todo: TodoItem,
     onToggleComplete: () -> Unit,
+    onToggleStarred: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -76,6 +82,7 @@ fun TodoItemCard(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Priority indicator
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -90,6 +97,7 @@ fun TodoItemCard(
                     .padding(horizontal = 12.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Checkbox
                 Checkbox(
                     checked = todo.isCompleted,
                     onCheckedChange = { onToggleComplete() },
@@ -99,7 +107,9 @@ fun TodoItemCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
+                // Content
                 Column(modifier = Modifier.weight(1f)) {
+                    // Title
                     Text(
                         text = todo.title,
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -109,6 +119,7 @@ fun TodoItemCard(
                         overflow = TextOverflow.Ellipsis
                     )
 
+                    // Description
                     if (todo.description.isNotEmpty()) {
                         Text(
                             text = todo.description,
@@ -121,10 +132,12 @@ fun TodoItemCard(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
+                    // Tags row
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Category
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -142,15 +155,36 @@ fun TodoItemCard(
                             )
                         }
 
+                        // Recurrence indicator
+                        if (todo.recurrenceType != RecurrenceType.NONE) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Repeat,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                                Text(
+                                    text = todo.recurrenceType.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+
+                        // Deadline
                         todo.deadline?.let { deadline ->
-                            val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
+                            val dateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.US)
                             val now = System.currentTimeMillis()
                             val daysUntil = TimeUnit.MILLISECONDS.toDays(deadline - now)
 
                             val deadlineText = when {
                                 daysUntil < 0 -> "Overdue ${-daysUntil} days"
-                                daysUntil == 0L -> "Today"
-                                daysUntil == 1L -> "Tomorrow"
+                                daysUntil == 0L -> "Today ${SimpleDateFormat("HH:mm", Locale.US).format(Date(deadline))}"
+                                daysUntil == 1L -> "Tomorrow ${SimpleDateFormat("HH:mm", Locale.US).format(Date(deadline))}"
                                 else -> dateFormat.format(Date(deadline))
                             }
 
@@ -177,14 +211,43 @@ fun TodoItemCard(
                                 )
                             }
                         }
+
+                        // Reminder indicator
+                        todo.reminderTime?.let { reminderTime ->
+                            val reminderColor = if (reminderTime < System.currentTimeMillis()) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.tertiary
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(reminderColor, shape = RoundedCornerShape(3.dp))
+                            )
+                        }
                     }
                 }
 
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                // Star button
+                IconButton(
+                    onClick = onToggleStarred,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (todo.isStarred) Icons.Default.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (todo.isStarred) "Unstar" else "Star",
+                        tint = if (todo.isStarred) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Delete button
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

@@ -5,7 +5,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.todolist.data.model.Category
 import com.example.todolist.data.model.Priority
+import com.example.todolist.data.model.RecurrenceType
+import com.example.todolist.data.model.Subtask
+import com.example.todolist.data.model.TaskList
 import com.example.todolist.data.model.TodoItem
+import com.example.todolist.data.repository.SubtaskRepository
+import com.example.todolist.data.repository.TaskListRepository
 import com.example.todolist.data.repository.TodoRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,15 +23,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class SortMode {
-    CREATED_AT, DEADLINE, PRIORITY
+    CREATED_AT, DEADLINE, PRIORITY, MANUAL
 }
 
 enum class FilterMode {
-    ALL, BY_CATEGORY, BY_PRIORITY, BY_COMPLETION
+    ALL, BY_CATEGORY, BY_PRIORITY, BY_COMPLETION, STARRED
 }
 
 data class TodoUiState(
     val todos: List<TodoItem> = emptyList(),
+    val taskLists: List<TaskList> = emptyList(),
+    val currentTaskListId: Int = 1,
     val searchQuery: String = "",
     val filterMode: FilterMode = FilterMode.ALL,
     val selectedCategory: Category? = null,
@@ -34,10 +41,17 @@ data class TodoUiState(
     val showCompleted: Boolean = true,
     val sortMode: SortMode = SortMode.CREATED_AT,
     val totalCount: Int = 0,
-    val completedCount: Int = 0
+    val completedCount: Int = 0,
+    val starredCount: Int = 0,
+    val subtasks: Map<Int, List<Subtask>> = emptyMap(),
+    val subtaskCounts: Map<Int, Pair<Int, Int>> = emptyMap() // todoId to (completed, total)
 )
 
-class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
+class TodoViewModel(
+    private val repository: TodoRepository,
+    private val taskListRepository: TaskListRepository,
+    private val subtaskRepository: SubtaskRepository
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -49,6 +63,15 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
     private val _selectedPriority = MutableStateFlow<Priority?>(null)
     private val _showCompleted = MutableStateFlow(true)
     private val _sortMode = MutableStateFlow(SortMode.CREATED_AT)
+    private val _currentTaskListId = MutableStateFlow(1)
+
+    val currentTaskListId: StateFlow<Int> = _currentTaskListId
+
+    val taskLists: StateFlow<List<TaskList>> = taskListRepository.allTaskLists.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val _todos = combine(
@@ -56,12 +79,21 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         _filterMode,
         _selectedCategory,
         _selectedPriority,
-        _sortMode
-    ) { query, filter, category, priority, sort ->
-        FilterParams(query, filter, category, priority, sort)
+        _sortMode,
+        _currentTaskListId
+    ) { flows: Array<*> ->
+        FilterParams(
+            flows[0] as String,
+            flows[1] as FilterMode,
+            flows[2] as Category?,
+            flows[3] as Priority?,
+            flows[4] as SortMode,
+            flows[5] as Int
+        )
     }.flatMapLatest { params ->
         when {
             params.query.isNotEmpty() -> repository.searchTodos(params.query)
+            params.filter == FilterMode.STARRED -> repository.getStarredTodos()
             params.filter == FilterMode.BY_CATEGORY && params.category != null ->
                 repository.getTodosByCategory(params.category)
             params.filter == FilterMode.BY_PRIORITY && params.priority != null ->
@@ -69,7 +101,7 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
             else -> when (params.sort) {
                 SortMode.DEADLINE -> repository.getTodosSortedByDeadline()
                 SortMode.PRIORITY -> repository.getTodosSortedByPriority()
-                SortMode.CREATED_AT -> repository.allTodos
+                SortMode.CREATED_AT, SortMode.MANUAL -> repository.getTodosByTaskList(params.taskListId)
             }
         }
     }
@@ -88,8 +120,11 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         _selectedPriority,
         _showCompleted,
         _sortMode,
+        _currentTaskListId,
+        taskLists,
         repository.todoCount,
-        repository.completedCount
+        repository.completedCount,
+        repository.starredCount
     ) { flows ->
         val todos = flows[0] as List<TodoItem>
         val query = flows[1] as String
@@ -98,8 +133,11 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         val priority = flows[4] as Priority?
         val showCompleted = flows[5] as Boolean
         val sort = flows[6] as SortMode
-        val total = flows[7] as Int
-        val completed = flows[8] as Int
+        val taskListId = flows[7] as Int
+        val taskLists = flows[8] as List<TaskList>
+        val total = flows[9] as Int
+        val completed = flows[10] as Int
+        val starred = flows[11] as Int
 
         val filteredTodos = if (showCompleted) {
             todos
@@ -109,6 +147,8 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
 
         TodoUiState(
             todos = filteredTodos,
+            taskLists = taskLists,
+            currentTaskListId = taskListId,
             searchQuery = query,
             filterMode = filter,
             selectedCategory = category,
@@ -116,7 +156,8 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
             showCompleted = showCompleted,
             sortMode = sort,
             totalCount = total,
-            completedCount = completed
+            completedCount = completed,
+            starredCount = starred
         )
     }.stateIn(
         scope = viewModelScope,
@@ -124,6 +165,68 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         initialValue = TodoUiState()
     )
 
+    // Subtasks management
+    private val _subtasks = MutableStateFlow<Map<Int, List<Subtask>>>(emptyMap())
+    val subtasks: StateFlow<Map<Int, List<Subtask>>> = _subtasks
+
+    fun loadSubtasks(todoId: Int) {
+        viewModelScope.launch {
+            subtaskRepository.getSubtasksByTodoId(todoId).collect { subs ->
+                _subtasks.value = _subtasks.value.toMutableMap().apply {
+                    put(todoId, subs)
+                }
+            }
+        }
+    }
+
+    fun addSubtask(todoId: Int, title: String) {
+        viewModelScope.launch {
+            subtaskRepository.insert(Subtask(todoId = todoId, title = title))
+        }
+    }
+
+    fun toggleSubtask(subtask: Subtask) {
+        viewModelScope.launch {
+            subtaskRepository.update(subtask.copy(isCompleted = !subtask.isCompleted))
+        }
+    }
+
+    fun deleteSubtask(subtask: Subtask) {
+        viewModelScope.launch {
+            subtaskRepository.delete(subtask)
+        }
+    }
+
+    fun updateSubtask(subtask: Subtask) {
+        viewModelScope.launch {
+            subtaskRepository.update(subtask)
+        }
+    }
+
+    // Task List management
+    fun setCurrentTaskList(taskListId: Int) {
+        _currentTaskListId.value = taskListId
+    }
+
+    fun addTaskList(name: String, color: String = "#00897B", icon: String = "list") {
+        viewModelScope.launch {
+            taskListRepository.insert(TaskList(name = name, color = color, icon = icon))
+        }
+    }
+
+    fun updateTaskList(taskList: TaskList) {
+        viewModelScope.launch {
+            taskListRepository.update(taskList.copy(updatedAt = System.currentTimeMillis()))
+        }
+    }
+
+    fun deleteTaskList(taskList: TaskList) {
+        viewModelScope.launch {
+            taskListRepository.delete(taskList)
+        }
+    }
+
+    // Search and Filter
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -148,12 +251,17 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         _sortMode.value = mode
     }
 
+    // Todo CRUD
     fun addTodo(
         title: String,
         description: String = "",
         priority: Priority = Priority.MEDIUM,
         category: Category = Category.OTHER,
-        deadline: Long? = null
+        deadline: Long? = null,
+        reminderTime: Long? = null,
+        recurrenceType: RecurrenceType = RecurrenceType.NONE,
+        isStarred: Boolean = false,
+        taskListId: Int = _currentTaskListId.value
     ) {
         viewModelScope.launch {
             repository.insert(
@@ -162,7 +270,11 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
                     description = description,
                     priority = priority,
                     category = category,
-                    deadline = deadline
+                    deadline = deadline,
+                    reminderTime = reminderTime,
+                    recurrenceType = recurrenceType,
+                    isStarred = isStarred,
+                    taskListId = taskListId
                 )
             )
         }
@@ -180,6 +292,12 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         }
     }
 
+    fun toggleStarred(todo: TodoItem) {
+        viewModelScope.launch {
+            repository.update(todo.copy(isStarred = !todo.isStarred, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     fun deleteTodo(todo: TodoItem) {
         viewModelScope.launch {
             repository.delete(todo)
@@ -192,11 +310,27 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         }
     }
 
-    class Factory(private val repository: TodoRepository) : ViewModelProvider.Factory {
+    fun updateSortOrder(id: Int, sortOrder: Int) {
+        viewModelScope.launch {
+            repository.updateSortOrder(id, sortOrder)
+        }
+    }
+
+    fun moveTodoToTaskList(todo: TodoItem, taskListId: Int) {
+        viewModelScope.launch {
+            repository.update(todo.copy(taskListId = taskListId, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
+    class Factory(
+        private val repository: TodoRepository,
+        private val taskListRepository: TaskListRepository,
+        private val subtaskRepository: SubtaskRepository
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(TodoViewModel::class.java)) {
-                return TodoViewModel(repository) as T
+                return TodoViewModel(repository, taskListRepository, subtaskRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
@@ -208,5 +342,6 @@ private data class FilterParams(
     val filter: FilterMode,
     val category: Category?,
     val priority: Priority?,
-    val sort: SortMode
+    val sort: SortMode,
+    val taskListId: Int
 )

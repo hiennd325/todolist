@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todolist.data.model.Category
@@ -49,6 +51,7 @@ fun FilterChipGroup(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // All filter
             FilterChip(
                 selected = filterMode == FilterMode.ALL,
                 onClick = { onFilterModeChanged(FilterMode.ALL) },
@@ -62,6 +65,27 @@ fun FilterChipGroup(
                         )
                     }
                 } else null
+            )
+
+            // Starred filter
+            FilterChip(
+                selected = filterMode == FilterMode.STARRED,
+                onClick = {
+                    if (filterMode == FilterMode.STARRED) {
+                        onFilterModeChanged(FilterMode.ALL)
+                    } else {
+                        onFilterModeChanged(FilterMode.STARRED)
+                    }
+                },
+                label = { Text("Starred") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (filterMode == FilterMode.STARRED) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             )
 
             Text(
