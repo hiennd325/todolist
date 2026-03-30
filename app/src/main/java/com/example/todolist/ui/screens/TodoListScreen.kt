@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.DropdownMenu
@@ -60,7 +62,9 @@ import com.example.todolist.ui.viewmodel.TodoViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoListScreen(
-    viewModel: TodoViewModel
+    viewModel: TodoViewModel,
+    isDarkTheme: Boolean = false,
+    onToggleTheme: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -77,12 +81,12 @@ fun TodoListScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Danh sách công việc",
+                            text = "Todo List",
                             style = MaterialTheme.typography.titleLarge
                         )
                         if (uiState.totalCount > 0) {
                             Text(
-                                text = "${uiState.completedCount}/${uiState.totalCount} hoàn thành",
+                                text = "${uiState.completedCount}/${uiState.totalCount} completed",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -92,7 +96,15 @@ fun TodoListScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = {
+                    IconButton(onClick = onToggleTheme) {
+                        Icon(
+                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isDarkTheme) "Switch to light mode" else "Switch to dark mode"
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -102,7 +114,7 @@ fun TodoListScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Thêm công việc"
+                    contentDescription = "Add task"
                 )
             }
         }
@@ -120,11 +132,11 @@ fun TodoListScreen(
                         onSearch = { searchActive = false },
                         expanded = searchActive,
                         onExpandedChange = { searchActive = it },
-                        placeholder = { Text("Tìm kiếm công việc...") },
+                        placeholder = { Text("Search tasks...") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Tìm kiếm"
+                                contentDescription = "Search"
                             )
                         },
                         trailingIcon = {
@@ -132,7 +144,7 @@ fun TodoListScreen(
                                 IconButton(onClick = { viewModel.setSearchQuery("") }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Xóa"
+                                        contentDescription = "Clear"
                                     )
                                 }
                             }
@@ -155,7 +167,7 @@ fun TodoListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Bộ lọc:",
+                    text = "Filter:",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -166,9 +178,9 @@ fun TodoListScreen(
                     ) {
                         Text(
                             text = when (uiState.sortMode) {
-                                SortMode.CREATED_AT -> "Thời gian tạo"
-                                SortMode.DEADLINE -> "Hạn chót"
-                                SortMode.PRIORITY -> "Độ ưu tiên"
+                                SortMode.CREATED_AT -> "Created At"
+                                SortMode.DEADLINE -> "Deadline"
+                                SortMode.PRIORITY -> "Priority"
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -176,7 +188,7 @@ fun TodoListScreen(
                         IconButton(onClick = { showSortMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.Sort,
-                                contentDescription = "Sắp xếp"
+                                contentDescription = "Sort"
                             )
                         }
                     }
@@ -185,7 +197,7 @@ fun TodoListScreen(
                         onDismissRequest = { showSortMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Theo thời gian tạo") },
+                            text = { Text("By Created At") },
                             onClick = {
                                 viewModel.setSortMode(SortMode.CREATED_AT)
                                 showSortMenu = false
@@ -197,7 +209,7 @@ fun TodoListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Theo hạn chót") },
+                            text = { Text("By Deadline") },
                             onClick = {
                                 viewModel.setSortMode(SortMode.DEADLINE)
                                 showSortMenu = false
@@ -209,7 +221,7 @@ fun TodoListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Theo độ ưu tiên") },
+                            text = { Text("By Priority") },
                             onClick = {
                                 viewModel.setSortMode(SortMode.PRIORITY)
                                 showSortMenu = false
@@ -281,16 +293,16 @@ fun TodoListScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (searchQuery.isNotEmpty()) {
-                                "Không tìm thấy công việc nào"
+                                "No tasks found"
                             } else {
-                                "Chưa có công việc nào"
+                                "No tasks yet"
                             },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Nhấn nút + để thêm công việc mới",
+                            text = "Tap the + button to add a new task",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

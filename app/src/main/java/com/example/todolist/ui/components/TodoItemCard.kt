@@ -143,14 +143,14 @@ fun TodoItemCard(
                         }
 
                         todo.deadline?.let { deadline ->
-                            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("vi"))
+                            val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
                             val now = System.currentTimeMillis()
                             val daysUntil = TimeUnit.MILLISECONDS.toDays(deadline - now)
 
                             val deadlineText = when {
-                                daysUntil < 0 -> "Quá hạn ${-daysUntil} ngày"
-                                daysUntil == 0L -> "Hôm nay"
-                                daysUntil == 1L -> "Ngày mai"
+                                daysUntil < 0 -> "Overdue ${-daysUntil} days"
+                                daysUntil == 0L -> "Today"
+                                daysUntil == 1L -> "Tomorrow"
                                 else -> dateFormat.format(Date(deadline))
                             }
 
@@ -183,7 +183,7 @@ fun TodoItemCard(
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Xóa",
+                        contentDescription = "Delete",
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

@@ -3,9 +3,9 @@ package com.example.todolist.data.model
 import androidx.compose.ui.graphics.Color
 
 enum class Priority(val label: String, val level: Int) {
-    HIGH("Cao", 3),
-    MEDIUM("Trung bình", 2),
-    LOW("Thấp", 1);
+    HIGH("High", 3),
+    MEDIUM("Medium", 2),
+    LOW("Low", 1);
 
     companion object {
         fun fromString(value: String): Priority {

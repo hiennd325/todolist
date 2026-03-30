@@ -42,7 +42,7 @@ fun PriorityDropdown(
             value = selectedPriority.label,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Độ ưu tiên") },
+            label = { Text("Priority") },
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,

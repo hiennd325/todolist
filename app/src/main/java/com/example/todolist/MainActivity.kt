@@ -4,8 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import com.example.todolist.data.local.TodoDatabase
@@ -27,9 +33,16 @@ class MainActivity : ComponentActivity() {
         )[TodoViewModel::class.java]
 
         setContent {
-            TodolistTheme {
+            val systemInDarkTheme = isSystemInDarkTheme()
+            var isDarkTheme by remember { mutableStateOf(systemInDarkTheme) }
+
+            TodolistTheme(darkTheme = isDarkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TodoListScreen(viewModel = viewModel)
+                    TodoListScreen(
+                        viewModel = viewModel,
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = { isDarkTheme = !isDarkTheme }
+                    )
                 }
             }
         }

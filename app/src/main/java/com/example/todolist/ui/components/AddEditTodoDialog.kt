@@ -62,7 +62,7 @@ fun AddEditTodoDialog(
     var triggerShake by remember { mutableStateOf(0) }
 
     val context = LocalContext.current
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("vi"))
+    val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
 
     val titleError = title.isBlank()
 
@@ -98,7 +98,7 @@ fun AddEditTodoDialog(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = if (todo == null) "Thêm công việc mới" else "Chỉnh sửa công việc")
+                Text(text = if (todo == null) "Add New Task" else "Edit Task")
             }
         },
         text = {
@@ -109,10 +109,10 @@ fun AddEditTodoDialog(
                         title = it
                         if (showError && it.isNotBlank()) showError = false
                     },
-                    label = { Text("Tiêu đề *") },
+                    label = { Text("Title *") },
                     isError = showError && titleError,
                     supportingText = if (showError && titleError) {
-                        { Text("Tiêu đề không được để trống") }
+                        { Text("Title cannot be empty") }
                     } else null,
                     colors = if (showError && titleError) {
                         OutlinedTextFieldDefaults.colors(
@@ -135,7 +135,7 @@ fun AddEditTodoDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Mô tả") },
+                    label = { Text("Description") },
                     minLines = 2,
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
@@ -170,7 +170,7 @@ fun AddEditTodoDialog(
                             value = dateFormat.format(Date(deadline)),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Hạn chót") },
+                            label = { Text("Deadline") },
                             trailingIcon = {
                                 Row {
                                     IconButton(onClick = {
@@ -190,7 +190,7 @@ fun AddEditTodoDialog(
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.DateRange,
-                                            contentDescription = "Chọn ngày"
+                                            contentDescription = "Pick date"
                                         )
                                     }
                                     IconButton(onClick = {
@@ -199,7 +199,7 @@ fun AddEditTodoDialog(
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.Clear,
-                                            contentDescription = "Xóa hạn chót"
+                                            contentDescription = "Remove deadline"
                                         )
                                     }
                                 }
@@ -230,7 +230,7 @@ fun AddEditTodoDialog(
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Thêm hạn chót")
+                            Text("Add Deadline")
                         }
                     }
                 }
@@ -253,12 +253,12 @@ fun AddEditTodoDialog(
                     }
                 }
             ) {
-                Text("Lưu")
+                Text("Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Hủy")
+                Text("Cancel")
             }
         }
     )

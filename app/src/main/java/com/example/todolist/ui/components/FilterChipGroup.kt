@@ -52,7 +52,7 @@ fun FilterChipGroup(
             FilterChip(
                 selected = filterMode == FilterMode.ALL,
                 onClick = { onFilterModeChanged(FilterMode.ALL) },
-                label = { Text("Tất cả") },
+                label = { Text("All") },
                 leadingIcon = if (filterMode == FilterMode.ALL) {
                     {
                         Icon(
@@ -65,7 +65,7 @@ fun FilterChipGroup(
             )
 
             Text(
-                text = "Danh mục:",
+                text = "Category:",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
@@ -105,7 +105,7 @@ fun FilterChipGroup(
             }
 
             Text(
-                text = "Ưu tiên:",
+                text = "Priority:",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
@@ -155,7 +155,7 @@ fun FilterChipGroup(
             FilterChip(
                 selected = !showCompleted,
                 onClick = { onShowCompletedChanged(!showCompleted) },
-                label = { Text("Ẩn hoàn thành") },
+                label = { Text("Hide completed") },
                 leadingIcon = if (!showCompleted) {
                     {
                         Icon(

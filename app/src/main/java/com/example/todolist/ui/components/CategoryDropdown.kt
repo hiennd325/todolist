@@ -39,7 +39,7 @@ fun CategoryDropdown(
             value = selectedCategory.label,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Danh mục") },
+            label = { Text("Category") },
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
