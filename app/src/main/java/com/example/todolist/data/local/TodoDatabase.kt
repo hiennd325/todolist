@@ -7,13 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.todolist.data.model.CustomCategory
 import com.example.todolist.data.model.Subtask
 import com.example.todolist.data.model.TaskList
 import com.example.todolist.data.model.TodoItem
 
 @Database(
-    entities = [TodoItem::class, TaskList::class, Subtask::class],
-    version = 2,
+    entities = [TodoItem::class, TaskList::class, Subtask::class, CustomCategory::class],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -21,6 +22,7 @@ abstract class TodoDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
     abstract fun taskListDao(): TaskListDao
     abstract fun subtaskDao(): SubtaskDao
+    abstract fun customCategoryDao(): CustomCategoryDao
 
     companion object {
         @Volatile
@@ -73,6 +75,25 @@ abstract class TodoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `custom_categories` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `color` TEXT NOT NULL DEFAULT '#00897B',
+                        `iconName` TEXT NOT NULL DEFAULT 'category',
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """)
+                
+                val currentTime = System.currentTimeMillis()
+                db.execSQL("INSERT INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Work', '#FF5722', 'work', $currentTime)")
+                db.execSQL("INSERT INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Personal', '#4CAF50', 'person', $currentTime)")
+                db.execSQL("INSERT INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Shopping', '#2196F3', 'shopping_cart', $currentTime)")
+            }
+        }
+
         fun getDatabase(context: Context): TodoDatabase {
             return INSTANCE ?: synchronized(this) {
                 val callback = object : RoomDatabase.Callback() {
@@ -82,6 +103,10 @@ abstract class TodoDatabase : RoomDatabase() {
                             "INSERT OR IGNORE INTO `task_lists` (`name`, `color`, `icon`, `createdAt`, `updatedAt`, `sortOrder`) " +
                             "VALUES ('My Tasks', '#00897B', 'list', ${System.currentTimeMillis()}, ${System.currentTimeMillis()}, 0)"
                         )
+                        val currentTime = System.currentTimeMillis()
+                        db.execSQL("INSERT OR IGNORE INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Work', '#FF5722', 'work', $currentTime)")
+                        db.execSQL("INSERT OR IGNORE INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Personal', '#4CAF50', 'person', $currentTime)")
+                        db.execSQL("INSERT OR IGNORE INTO `custom_categories` (`name`, `color`, `iconName`, `createdAt`) VALUES ('Shopping', '#2196F3', 'shopping_cart', $currentTime)")
                     }
                 }
                 val instance = Room.databaseBuilder(
@@ -89,7 +114,7 @@ abstract class TodoDatabase : RoomDatabase() {
                     TodoDatabase::class.java,
                     "todo_database"
                 )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(callback)
                 .build()
                 INSTANCE = instance

@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,19 +26,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MoveToInbox
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,20 +87,21 @@ import com.example.todolist.notification.NotificationScheduler
 import com.example.todolist.ui.components.AddEditTodoDialog
 import com.example.todolist.ui.components.FilterChipGroup
 import com.example.todolist.ui.components.SubtaskSection
+import com.example.todolist.ui.components.SwipeableTodoItemCard
 import com.example.todolist.ui.components.TaskListDrawer
-import com.example.todolist.ui.components.TodoItemCard
 import com.example.todolist.ui.viewmodel.SortMode
 import com.example.todolist.ui.viewmodel.TodoViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TodoListScreen(
     viewModel: TodoViewModel,
     isDarkTheme: Boolean = false,
     onToggleTheme: () -> Unit = {},
     notificationScheduler: NotificationScheduler? = null,
-    exportImportManager: ExportImportManager? = null
+    exportImportManager: ExportImportManager? = null,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -105,11 +116,15 @@ fun TodoListScreen(
     var showOptionsMenu by remember { mutableStateOf(false) }
     var searchActive by remember { mutableStateOf(false) }
     var expandedTodoId by remember { mutableStateOf<Int?>(null) }
+    var showMoveToListDialog by remember { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val isSelectionMode = uiState.isSelectionMode
+    val selectedTodoIds = uiState.selectedTodoIds
 
     // Export launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -188,118 +203,238 @@ fun TodoListScreen(
             topBar = {
                 TopAppBar(
                     title = {
-                        Column {
+                        if (isSelectionMode) {
                             Text(
-                                text = currentTaskListName,
+                                text = "${selectedTodoIds.size} selected",
                                 style = MaterialTheme.typography.titleLarge
                             )
-                            if (uiState.totalCount > 0) {
+                        } else {
+                            Column {
                                 Text(
-                                    text = "${uiState.completedCount}/${uiState.totalCount} completed",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = currentTaskListName,
+                                    style = MaterialTheme.typography.titleLarge
                                 )
+                                if (uiState.totalCount > 0) {
+                                    Text(
+                                        text = "${uiState.completedCount}/${uiState.totalCount} completed",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = if (isSelectionMode) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.primaryContainer
+                        },
+                        titleContentColor = if (isSelectionMode) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        }
                     ),
                     navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menu"
-                            )
+                        if (isSelectionMode) {
+                            IconButton(onClick = { viewModel.toggleSelectionMode() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Exit selection mode"
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                scope.launch { drawerState.open() }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Menu,
+                                    contentDescription = "Menu"
+                                )
+                            }
                         }
                     },
                     actions = {
-                        // Theme toggle
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = if (isDarkTheme) "Switch to light mode" else "Switch to dark mode"
-                            )
-                        }
-                        // Options menu
-                        Box {
-                            IconButton(onClick = { showOptionsMenu = true }) {
+                        if (isSelectionMode) {
+                            IconButton(onClick = {
+                                if (selectedTodoIds.size == uiState.todos.size) {
+                                    viewModel.clearSelection()
+                                } else {
+                                    viewModel.selectAllTodos()
+                                }
+                            }) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More options"
+                                    imageVector = Icons.Default.SelectAll,
+                                    contentDescription = if (selectedTodoIds.size == uiState.todos.size) "Deselect all" else "Select all"
                                 )
                             }
-                            DropdownMenu(
-                                expanded = showOptionsMenu,
-                                onDismissRequest = { showOptionsMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Export Data") },
-                                    onClick = {
-                                        showOptionsMenu = false
-                                        exportLauncher.launch("todolist_backup_${System.currentTimeMillis()}.json")
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Upload,
-                                            contentDescription = null
-                                        )
-                                    }
+                        } else {
+                            // Theme toggle
+                            IconButton(onClick = onToggleTheme) {
+                                Icon(
+                                    imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                    contentDescription = if (isDarkTheme) "Switch to light mode" else "Switch to dark mode"
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Import Data") },
-                                    onClick = {
-                                        showOptionsMenu = false
-                                        importLauncher.launch(arrayOf("application/json"))
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text("Share Tasks") },
-                                    onClick = {
-                                        showOptionsMenu = false
-                                        // Share current task list as text
-                                        val tasks = uiState.todos.joinToString("\n") { todo ->
-                                            val status = if (todo.isCompleted) "✓" else "○"
-                                            "$status ${todo.title}"
+                            }
+                            // Options menu
+                            Box {
+                                IconButton(onClick = { showOptionsMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More options"
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showOptionsMenu,
+                                    onDismissRequest = { showOptionsMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Settings") },
+                                        onClick = {
+                                            showOptionsMenu = false
+                                            onNavigateToSettings()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Settings,
+                                                contentDescription = null
+                                            )
                                         }
-                                        val shareIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            putExtra(Intent.EXTRA_TEXT, "My Tasks - $currentTaskListName\n\n$tasks")
-                                            type = "text/plain"
+                                    )
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = { Text("Export Data") },
+                                        onClick = {
+                                            showOptionsMenu = false
+                                            exportLauncher.launch("todolist_backup_${System.currentTimeMillis()}.json")
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Upload,
+                                                contentDescription = null
+                                            )
                                         }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share tasks"))
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Share,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Import Data") },
+                                        onClick = {
+                                            showOptionsMenu = false
+                                            importLauncher.launch(arrayOf("application/json"))
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = { Text("Share Tasks") },
+                                        onClick = {
+                                            showOptionsMenu = false
+                                            // Share current task list as text
+                                            val tasks = uiState.todos.joinToString("\n") { todo ->
+                                                val status = if (todo.isCompleted) "✓" else "○"
+                                                "$status ${todo.title}"
+                                            }
+                                            val shareIntent = Intent().apply {
+                                                action = Intent.ACTION_SEND
+                                                putExtra(Intent.EXTRA_TEXT, "My Tasks - $currentTaskListName\n\n$tasks")
+                                                type = "text/plain"
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share tasks"))
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 )
             },
+            bottomBar = {
+                if (isSelectionMode && selectedTodoIds.isNotEmpty()) {
+                    BottomAppBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { viewModel.completeSelectedTodos() }) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Complete All"
+                                    )
+                                    Text(
+                                        text = "Complete",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { viewModel.starSelectedTodos() }) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Star All"
+                                    )
+                                    Text(
+                                        text = "Star",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { showMoveToListDialog = true }) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoveToInbox,
+                                        contentDescription = "Move All"
+                                    )
+                                    Text(
+                                        text = "Move",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { viewModel.deleteSelectedTodos() }) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete All",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "Delete",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showAddDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add task"
-                    )
+                if (!isSelectionMode) {
+                    FloatingActionButton(
+                        onClick = { showAddDialog = true },
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add task"
+                        )
+                    }
                 }
             }
         ) { paddingValues ->
@@ -518,7 +653,7 @@ fun TodoListScreen(
                     LazyColumn(
                         contentPadding = PaddingValues(
                             top = 8.dp,
-                            bottom = 88.dp
+                            bottom = if (isSelectionMode && selectedTodoIds.isNotEmpty()) 80.dp else 88.dp
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -532,16 +667,57 @@ fun TodoListScreen(
                                 exit = fadeOut() + slideOutVertically()
                             ) {
                                 Column {
-                                    TodoItemCard(
-                                        todo = todo,
-                                        onToggleComplete = { viewModel.toggleComplete(todo) },
-                                        onToggleStarred = { viewModel.toggleStarred(todo) },
-                                        onEdit = {
-                                            expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
-                                            editingTodo = todo
-                                        },
-                                        onDelete = { viewModel.deleteTodo(todo) }
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (isSelectionMode) {
+                                                        viewModel.toggleTodoSelection(todo.id)
+                                                    } else {
+                                                        expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
+                                                        editingTodo = todo
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    if (!isSelectionMode) {
+                                                        viewModel.toggleSelectionMode()
+                                                    }
+                                                    viewModel.toggleTodoSelection(todo.id)
+                                                }
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (isSelectionMode) {
+                                            Checkbox(
+                                                checked = todo.id in selectedTodoIds,
+                                                onCheckedChange = { viewModel.toggleTodoSelection(todo.id) },
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
+                                        SwipeableTodoItemCard(
+                                            todo = todo,
+                                            onToggleComplete = { viewModel.toggleComplete(todo) },
+                                            onToggleStarred = { viewModel.toggleStarred(todo) },
+                                            onEdit = {
+                                                expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
+                                                editingTodo = todo
+                                            },
+                                            onDelete = { viewModel.deleteTodo(todo) },
+                                            onShowUndoSnackbar = { undoAction ->
+                                                scope.launch {
+                                                    val result = snackbarHostState.showSnackbar(
+                                                        message = "Task deleted",
+                                                        actionLabel = "Undo"
+                                                    )
+                                                    if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                        undoAction()
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
 
                                     // Subtask section (expanded)
                                     if (expandedTodoId == todo.id) {
@@ -571,6 +747,33 @@ fun TodoListScreen(
                 }
             }
         }
+    }
+
+    // Move to list dialog (simple selection from taskLists)
+    if (showMoveToListDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showMoveToListDialog = false },
+            title = { Text("Move to List") },
+            text = {
+                Column {
+                    taskLists.forEach { taskList ->
+                        DropdownMenuItem(
+                            text = { Text(taskList.name) },
+                            onClick = {
+                                viewModel.moveSelectedTodosToTaskList(taskList.id)
+                                showMoveToListDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showMoveToListDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // Add dialog

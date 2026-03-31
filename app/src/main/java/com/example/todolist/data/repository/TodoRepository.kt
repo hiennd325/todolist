@@ -47,6 +47,8 @@ class TodoRepository(private val todoDao: TodoDao) {
     fun getCompletedCountByTaskList(taskListId: Int): Flow<Int> =
         todoDao.getCompletedCountByTaskList(taskListId)
 
+    suspend fun getTodoByIdSync(id: Int): TodoItem? = todoDao.getTodoByIdSync(id)
+
     suspend fun insert(todo: TodoItem): Long = todoDao.insert(todo)
 
     suspend fun update(todo: TodoItem) = todoDao.update(todo)
@@ -54,6 +56,10 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun delete(todo: TodoItem) = todoDao.delete(todo)
 
     suspend fun deleteById(id: Int) = todoDao.deleteById(id)
+
+    suspend fun updateTodos(todos: List<TodoItem>) = todoDao.updateTodos(todos)
+
+    suspend fun deleteTodosByIds(ids: List<Int>) = todoDao.deleteTodosByIds(ids)
 
     suspend fun updateSortOrder(id: Int, sortOrder: Int) = todoDao.updateSortOrder(id, sortOrder)
 }

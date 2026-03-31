@@ -44,7 +44,9 @@ data class TodoUiState(
     val completedCount: Int = 0,
     val starredCount: Int = 0,
     val subtasks: Map<Int, List<Subtask>> = emptyMap(),
-    val subtaskCounts: Map<Int, Pair<Int, Int>> = emptyMap() // todoId to (completed, total)
+    val subtaskCounts: Map<Int, Pair<Int, Int>> = emptyMap(),
+    val selectedTodoIds: Set<Int> = emptySet(),
+    val isSelectionMode: Boolean = false
 )
 
 class TodoViewModel(
@@ -64,6 +66,9 @@ class TodoViewModel(
     private val _showCompleted = MutableStateFlow(true)
     private val _sortMode = MutableStateFlow(SortMode.CREATED_AT)
     private val _currentTaskListId = MutableStateFlow(1)
+
+    private val _selectedTodoIds = MutableStateFlow<Set<Int>>(emptySet())
+    private val _isSelectionMode = MutableStateFlow(false)
 
     val currentTaskListId: StateFlow<Int> = _currentTaskListId
 
@@ -124,7 +129,9 @@ class TodoViewModel(
         taskLists,
         repository.todoCount,
         repository.completedCount,
-        repository.starredCount
+        repository.starredCount,
+        _selectedTodoIds,
+        _isSelectionMode
     ) { flows ->
         val todos = flows[0] as List<TodoItem>
         val query = flows[1] as String
@@ -138,6 +145,8 @@ class TodoViewModel(
         val total = flows[9] as Int
         val completed = flows[10] as Int
         val starred = flows[11] as Int
+        val selectedIds = flows[12] as Set<Int>
+        val isSelectionMode = flows[13] as Boolean
 
         val filteredTodos = if (showCompleted) {
             todos
@@ -157,7 +166,9 @@ class TodoViewModel(
             sortMode = sort,
             totalCount = total,
             completedCount = completed,
-            starredCount = starred
+            starredCount = starred,
+            selectedTodoIds = selectedIds,
+            isSelectionMode = isSelectionMode
         )
     }.stateIn(
         scope = viewModelScope,
@@ -165,7 +176,6 @@ class TodoViewModel(
         initialValue = TodoUiState()
     )
 
-    // Subtasks management
     private val _subtasks = MutableStateFlow<Map<Int, List<Subtask>>>(emptyMap())
     val subtasks: StateFlow<Map<Int, List<Subtask>>> = _subtasks
 
@@ -203,7 +213,6 @@ class TodoViewModel(
         }
     }
 
-    // Task List management
     fun setCurrentTaskList(taskListId: Int) {
         _currentTaskListId.value = taskListId
     }
@@ -226,7 +235,6 @@ class TodoViewModel(
         }
     }
 
-    // Search and Filter
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -251,7 +259,6 @@ class TodoViewModel(
         _sortMode.value = mode
     }
 
-    // Todo CRUD
     fun addTodo(
         title: String,
         description: String = "",
@@ -319,6 +326,116 @@ class TodoViewModel(
     fun moveTodoToTaskList(todo: TodoItem, taskListId: Int) {
         viewModelScope.launch {
             repository.update(todo.copy(taskListId = taskListId, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
+    fun toggleSelectionMode() {
+        _isSelectionMode.value = !_isSelectionMode.value
+        if (!_isSelectionMode.value) {
+            _selectedTodoIds.value = emptySet()
+        }
+    }
+
+    fun toggleTodoSelection(todoId: Int) {
+        val currentSelection = _selectedTodoIds.value
+        _selectedTodoIds.value = if (todoId in currentSelection) {
+            currentSelection - todoId
+        } else {
+            currentSelection + todoId
+        }
+    }
+
+    fun selectAllTodos() {
+        val currentTodos = uiState.value.todos
+        _selectedTodoIds.value = currentTodos.map { it.id }.toSet()
+    }
+
+    fun clearSelection() {
+        _selectedTodoIds.value = emptySet()
+    }
+
+    fun deleteSelectedTodos() {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            selectedIds.forEach { id ->
+                repository.deleteById(id)
+            }
+            clearSelection()
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun completeSelectedTodos() {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            val currentTime = System.currentTimeMillis()
+            selectedIds.forEach { id ->
+                repository.getTodoByIdSync(id)?.let { todo ->
+                    if (!todo.isCompleted) {
+                        repository.update(todo.copy(isCompleted = true, updatedAt = currentTime))
+                    }
+                }
+            }
+            clearSelection()
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun moveSelectedTodosToTaskList(taskListId: Int) {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            val currentTime = System.currentTimeMillis()
+            selectedIds.forEach { id ->
+                repository.getTodoByIdSync(id)?.let { todo ->
+                    repository.update(todo.copy(taskListId = taskListId, updatedAt = currentTime))
+                }
+            }
+            clearSelection()
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun starSelectedTodos() {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            val currentTime = System.currentTimeMillis()
+            selectedIds.forEach { id ->
+                repository.getTodoByIdSync(id)?.let { todo ->
+                    if (!todo.isStarred) {
+                        repository.update(todo.copy(isStarred = true, updatedAt = currentTime))
+                    }
+                }
+            }
+            clearSelection()
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun updateSelectedTodosCategory(category: Category) {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            val currentTime = System.currentTimeMillis()
+            selectedIds.forEach { id ->
+                repository.getTodoByIdSync(id)?.let { todo ->
+                    repository.update(todo.copy(category = category, updatedAt = currentTime))
+                }
+            }
+            clearSelection()
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun updateSelectedTodosPriority(priority: Priority) {
+        viewModelScope.launch {
+            val selectedIds = _selectedTodoIds.value
+            val currentTime = System.currentTimeMillis()
+            selectedIds.forEach { id ->
+                repository.getTodoByIdSync(id)?.let { todo ->
+                    repository.update(todo.copy(priority = priority, updatedAt = currentTime))
+                }
+            }
+            clearSelection()
+            _isSelectionMode.value = false
         }
     }
 

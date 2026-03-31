@@ -33,6 +33,9 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items WHERE id = :id")
     fun getTodoById(id: Int): Flow<TodoItem?>
 
+    @Query("SELECT * FROM todo_items WHERE id = :id")
+    suspend fun getTodoByIdSync(id: Int): TodoItem?
+
     // Get todos by category
     @Query("SELECT * FROM todo_items WHERE category = :category ORDER BY createdAt DESC")
     fun getTodosByCategory(category: String): Flow<List<TodoItem>>
@@ -76,11 +79,17 @@ interface TodoDao {
     @Update
     suspend fun update(todo: TodoItem)
 
+    @Update
+    suspend fun updateTodos(todos: List<TodoItem>)
+
     @Delete
     suspend fun delete(todo: TodoItem)
 
     @Query("DELETE FROM todo_items WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("DELETE FROM todo_items WHERE id IN (:ids)")
+    suspend fun deleteTodosByIds(ids: List<Int>)
 
     // Statistics
     @Query("SELECT COUNT(*) FROM todo_items")
