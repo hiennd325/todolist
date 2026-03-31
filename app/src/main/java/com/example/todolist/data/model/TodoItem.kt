@@ -29,6 +29,7 @@ data class TodoItem(
     val deadline: Long? = null,
     val reminderTime: Long? = null,
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
+    val estimatedDurationMinutes: Int? = null,
     val taskListId: Int = 1,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),

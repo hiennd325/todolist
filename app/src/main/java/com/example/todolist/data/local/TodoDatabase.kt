@@ -14,7 +14,7 @@ import com.example.todolist.data.model.TodoItem
 
 @Database(
     entities = [TodoItem::class, TaskList::class, Subtask::class, CustomCategory::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -94,6 +94,12 @@ abstract class TodoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `estimatedDurationMinutes` INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): TodoDatabase {
             return INSTANCE ?: synchronized(this) {
                 val callback = object : RoomDatabase.Callback() {
@@ -114,7 +120,7 @@ abstract class TodoDatabase : RoomDatabase() {
                     TodoDatabase::class.java,
                     "todo_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(callback)
                 .build()
                 INSTANCE = instance

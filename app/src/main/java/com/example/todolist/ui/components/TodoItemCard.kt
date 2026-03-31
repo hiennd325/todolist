@@ -42,12 +42,20 @@ import androidx.compose.ui.unit.dp
 import com.example.todolist.data.model.RecurrenceType
 import com.example.todolist.data.model.TodoItem
 import com.example.todolist.data.model.color
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-
-@Composable
+ import java.text.SimpleDateFormat
+ import java.util.Date
+ import java.util.Locale
+ import java.util.concurrent.TimeUnit
+ 
+ private fun formatDuration(minutes: Int): String {
+     return when {
+         minutes < 60 -> "$minutes min"
+         minutes % 60 == 0 -> "${minutes / 60}h"
+         else -> "${minutes / 60}h ${minutes % 60}m"
+     }
+ }
+ 
+ @Composable
 fun TodoItemCard(
     todo: TodoItem,
     onToggleComplete: () -> Unit,
@@ -209,10 +217,30 @@ fun TodoItemCard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = deadlineColor
                                 )
-                            }
-                        }
-
-                        // Reminder indicator
+                         }
+                     }
+ 
+                     // Estimated Duration
+                     if (todo.estimatedDurationMinutes != null && todo.estimatedDurationMinutes > 0) {
+                         Row(
+                             verticalAlignment = Alignment.CenterVertically,
+                             horizontalArrangement = Arrangement.spacedBy(2.dp)
+                         ) {
+                             Icon(
+                                 imageVector = Icons.Default.DateRange,
+                                 contentDescription = null,
+                                 modifier = Modifier.size(12.dp),
+                                 tint = MaterialTheme.colorScheme.secondary
+                             )
+                             Text(
+                                 text = formatDuration(todo.estimatedDurationMinutes),
+                                 style = MaterialTheme.typography.labelSmall,
+                                 color = MaterialTheme.colorScheme.secondary
+                             )
+                         }
+                     }
+ 
+                     // Reminder indicator
                         todo.reminderTime?.let { reminderTime ->
                             val reminderColor = if (reminderTime < System.currentTimeMillis()) {
                                 MaterialTheme.colorScheme.error

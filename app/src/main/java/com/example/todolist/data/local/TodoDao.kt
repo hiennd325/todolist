@@ -72,6 +72,19 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items WHERE recurrenceType != 'NONE' ORDER BY createdAt DESC")
     fun getRecurringTodos(): Flow<List<TodoItem>>
 
+    // Smart Lists queries
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline <= :endOfDay ORDER BY deadline ASC")
+    fun getTodosDueToday(endOfDay: Long): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline < :currentTime ORDER BY deadline ASC")
+    fun getOverdueTodos(currentTime: Long): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline >= :startTime AND deadline <= :endTime ORDER BY deadline ASC")
+    fun getUpcomingTodos(startTime: Long, endTime: Long): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 1 AND createdAt >= :startOfDay ORDER BY createdAt DESC")
+    fun getCompletedToday(startOfDay: Long): Flow<List<TodoItem>>
+
     // CRUD operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(todo: TodoItem): Long

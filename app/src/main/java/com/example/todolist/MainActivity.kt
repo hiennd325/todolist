@@ -22,20 +22,20 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.todolist.data.export.ExportImportManager
 import com.example.todolist.data.local.TodoDatabase
-import com.example.todolist.data.repository.CustomCategoryRepository
-import com.example.todolist.data.repository.StatisticsRepository
-import com.example.todolist.data.repository.SubtaskRepository
-import com.example.todolist.data.repository.TaskListRepository
-import com.example.todolist.data.repository.TodoRepository
+ import com.example.todolist.data.repository.CustomCategoryRepository
+ import com.example.todolist.data.repository.StatisticsRepository
+ import com.example.todolist.data.repository.SubtaskRepository
+ import com.example.todolist.data.repository.TaskListRepository
+ import com.example.todolist.data.repository.TodoRepository
 import com.example.todolist.data.settings.SettingsManager
 import com.example.todolist.notification.NotificationScheduler
 import com.example.todolist.ui.navigation.AppNavigation
-import com.example.todolist.ui.screens.SettingsScreen
-import com.example.todolist.ui.screens.SettingsViewModel
-import com.example.todolist.ui.theme.TodolistTheme
-import com.example.todolist.ui.viewmodel.CalendarViewModel
-import com.example.todolist.ui.viewmodel.StatisticsViewModel
-import com.example.todolist.ui.viewmodel.TodoViewModel
+ import com.example.todolist.ui.screens.SettingsScreen
+ import com.example.todolist.ui.screens.SettingsViewModel
+ import com.example.todolist.ui.theme.TodolistTheme
+ import com.example.todolist.ui.viewmodel.CalendarViewModel
+ import com.example.todolist.ui.viewmodel.StatisticsViewModel
+ import com.example.todolist.ui.viewmodel.TodoViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -54,12 +54,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val database = TodoDatabase.getDatabase(this)
-        val repository = TodoRepository(database.todoDao())
-        val taskListRepository = TaskListRepository(database.taskListDao())
-        val subtaskRepository = SubtaskRepository(database.subtaskDao())
-        val statisticsRepository = StatisticsRepository(database.todoDao())
-        val customCategoryRepository = CustomCategoryRepository(database.customCategoryDao())
+         val database = TodoDatabase.getDatabase(this)
+         val repository = TodoRepository(database.todoDao())
+         val taskListRepository = TaskListRepository(database.taskListDao())
+         val subtaskRepository = SubtaskRepository(database.subtaskDao())
+         val statisticsRepository = StatisticsRepository(database.todoDao())
+         val customCategoryRepository = CustomCategoryRepository(database.customCategoryDao())
 
         notificationScheduler = NotificationScheduler(this)
         exportImportManager = ExportImportManager(this, repository, taskListRepository, subtaskRepository)
@@ -81,10 +81,10 @@ class MainActivity : ComponentActivity() {
             CalendarViewModel.Factory(repository)
         )[CalendarViewModel::class.java]
 
-        val settingsViewModel: SettingsViewModel = ViewModelProvider(
-            this,
-            SettingsViewModel.Factory(settingsManager, customCategoryRepository, exportImportManager)
-        )[SettingsViewModel::class.java]
+         val settingsViewModel: SettingsViewModel = ViewModelProvider(
+             this,
+             SettingsViewModel.Factory(settingsManager, customCategoryRepository, exportImportManager)
+         )[SettingsViewModel::class.java]
 
         // Request notification permission for Android 13+
         askNotificationPermission()

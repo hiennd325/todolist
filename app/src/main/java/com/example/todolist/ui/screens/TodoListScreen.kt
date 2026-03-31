@@ -776,50 +776,52 @@ fun TodoListScreen(
         )
     }
 
-    // Add dialog
-    if (showAddDialog) {
-        AddEditTodoDialog(
-            taskListId = currentTaskListId,
-            onDismiss = { showAddDialog = false },
-            onConfirm = { title, description, priority, category, deadline, reminderTime, recurrenceType, isStarred, taskListId ->
-                viewModel.addTodo(
-                    title = title,
-                    description = description,
-                    priority = priority,
-                    category = category,
-                    deadline = deadline,
-                    reminderTime = reminderTime,
-                    recurrenceType = recurrenceType,
-                    isStarred = isStarred,
-                    taskListId = taskListId
-                )
-                showAddDialog = false
-            }
-        )
-    }
-
-    // Edit dialog
-    editingTodo?.let { todo ->
-        AddEditTodoDialog(
-            todo = todo,
-            taskListId = currentTaskListId,
-            onDismiss = { editingTodo = null },
-            onConfirm = { title, description, priority, category, deadline, reminderTime, recurrenceType, isStarred, taskListId ->
-                viewModel.updateTodo(
-                    todo.copy(
-                        title = title,
-                        description = description,
-                        priority = priority,
-                        category = category,
-                        deadline = deadline,
-                        reminderTime = reminderTime,
-                        recurrenceType = recurrenceType,
-                        isStarred = isStarred,
-                        taskListId = taskListId
-                    )
-                )
-                editingTodo = null
-            }
-        )
-    }
+     // Add dialog
+     if (showAddDialog) {
+         AddEditTodoDialog(
+             taskListId = currentTaskListId,
+             onDismiss = { showAddDialog = false },
+             onConfirm = { title, description, priority, category, deadline, reminderTime, recurrenceType, estimatedDuration, isStarred, taskListId ->
+                 viewModel.addTodo(
+                     title = title,
+                     description = description,
+                     priority = priority,
+                     category = category,
+                     deadline = deadline,
+                     reminderTime = reminderTime,
+                     recurrenceType = recurrenceType,
+                     estimatedDurationMinutes = estimatedDuration,
+                     isStarred = isStarred,
+                     taskListId = taskListId
+                 )
+                 showAddDialog = false
+             }
+         )
+     }
+ 
+     // Edit dialog
+     editingTodo?.let { todo ->
+         AddEditTodoDialog(
+             todo = todo,
+             taskListId = currentTaskListId,
+             onDismiss = { editingTodo = null },
+             onConfirm = { title, description, priority, category, deadline, reminderTime, recurrenceType, estimatedDuration, isStarred, taskListId ->
+                 viewModel.updateTodo(
+                     todo.copy(
+                         title = title,
+                         description = description,
+                         priority = priority,
+                         category = category,
+                         deadline = deadline,
+                         reminderTime = reminderTime,
+                         recurrenceType = recurrenceType,
+                         estimatedDurationMinutes = estimatedDuration,
+                         isStarred = isStarred,
+                         taskListId = taskListId
+                     )
+                 )
+                 editingTodo = null
+             }
+         )
+     }
 }

@@ -5,6 +5,7 @@ import com.example.todolist.data.model.Category
 import com.example.todolist.data.model.Priority
 import com.example.todolist.data.model.TodoItem
 import kotlinx.coroutines.flow.Flow
+import java.util.Calendar
 
 class TodoRepository(private val todoDao: TodoDao) {
     val allTodos: Flow<List<TodoItem>> = todoDao.getAllTodos()
@@ -40,6 +41,50 @@ class TodoRepository(private val todoDao: TodoDao) {
         todoDao.getTodosWithReminders(currentTime)
 
     fun getRecurringTodos(): Flow<List<TodoItem>> = todoDao.getRecurringTodos()
+
+    // Smart Lists
+    fun getTodosDueToday(endOfDay: Long): Flow<List<TodoItem>> = todoDao.getTodosDueToday(endOfDay)
+
+    fun getOverdueTodos(currentTime: Long): Flow<List<TodoItem>> = todoDao.getOverdueTodos(currentTime)
+
+    fun getUpcomingTodos(startTime: Long, endTime: Long): Flow<List<TodoItem>> =
+        todoDao.getUpcomingTodos(startTime, endTime)
+
+    fun getCompletedToday(startOfDay: Long): Flow<List<TodoItem>> = todoDao.getCompletedToday(startOfDay)
+
+    // Smart Lists presets
+    fun getTodosDueToday(): Flow<List<TodoItem>> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.timeInMillis
+        return todoDao.getTodosDueToday(endOfDay)
+    }
+
+    fun getOverdueTodos(): Flow<List<TodoItem>> = todoDao.getOverdueTodos(System.currentTimeMillis())
+
+    fun getUpcomingTodos(weekAhead: Long = 7): Flow<List<TodoItem>> {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, weekAhead.toInt())
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endTime = calendar.timeInMillis
+        return todoDao.getUpcomingTodos(System.currentTimeMillis(), endTime)
+    }
+
+    fun getCompletedToday(): Flow<List<TodoItem>> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+        return todoDao.getCompletedToday(startOfDay)
+    }
 
     fun getTodoCountByTaskList(taskListId: Int): Flow<Int> =
         todoDao.getTodoCountByTaskList(taskListId)

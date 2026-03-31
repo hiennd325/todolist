@@ -40,22 +40,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableLongStateOf
+ import androidx.compose.runtime.mutableStateListOf
+ import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.mutableIntStateOf
+ import androidx.compose.runtime.remember
+ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.todolist.data.model.Category
-import com.example.todolist.data.model.Priority
-import com.example.todolist.data.model.RecurrenceType
-import com.example.todolist.data.model.TodoItem
+ import com.example.todolist.data.model.Category
+ import com.example.todolist.data.model.Priority
+ import com.example.todolist.data.model.RecurrenceType
+ import com.example.todolist.data.model.TodoItem
 import com.example.todolist.ui.theme.TodolistTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -76,6 +79,7 @@ fun AddEditTodoDialog(
         deadline: Long?,
         reminderTime: Long?,
         recurrenceType: RecurrenceType,
+        estimatedDurationMinutes: Int?,
         isStarred: Boolean,
         taskListId: Int
     ) -> Unit
@@ -84,11 +88,12 @@ fun AddEditTodoDialog(
     var description by remember { mutableStateOf(todo?.description ?: "") }
     var selectedPriority by remember { mutableStateOf(todo?.priority ?: Priority.MEDIUM) }
     var selectedCategory by remember { mutableStateOf(todo?.category ?: Category.OTHER) }
-    var deadline by remember { mutableLongStateOf(todo?.deadline ?: 0L) }
+    var deadline by remember { mutableStateOf(todo?.deadline ?: 0L) }
     var hasDeadline by remember { mutableStateOf(todo?.deadline != null) }
-    var reminderTime by remember { mutableLongStateOf(todo?.reminderTime ?: 0L) }
+    var reminderTime by remember { mutableStateOf(todo?.reminderTime ?: 0L) }
     var hasReminder by remember { mutableStateOf(todo?.reminderTime != null) }
     var selectedRecurrence by remember { mutableStateOf(todo?.recurrenceType ?: RecurrenceType.NONE) }
+    var estimatedDuration by remember { mutableStateOf(todo?.estimatedDurationMinutes?.toString() ?: "") }
     var isStarred by remember { mutableStateOf(todo?.isStarred ?: false) }
     var showError by remember { mutableStateOf(false) }
     var triggerShake by remember { mutableStateOf(0) }
@@ -102,26 +107,28 @@ fun AddEditTodoDialog(
 
     val shakeOffset = remember { Animatable(0f) }
 
-    LaunchedEffect(triggerShake) {
-        if (triggerShake > 0) {
-            shakeOffset.animateTo(
-                targetValue = 0f,
-                animationSpec = keyframes {
-                    durationMillis = 400
-                    0f at 0
-                    -12f at 50
-                    12f at 100
-                    -10f at 150
-                    10f at 200
-                    -6f at 250
-                    6f at 300
-                    -3f at 350
-                    0f at 400
-                }
-            )
-        }
-    }
-
+     LaunchedEffect(triggerShake) {
+         if (triggerShake > 0) {
+             shakeOffset.animateTo(
+                 targetValue = 0f,
+                 animationSpec = keyframes {
+                     durationMillis = 400
+                     0f at 0
+                     -12f at 50
+                     12f at 100
+                     -10f at 150
+                     10f at 200
+                     -6f at 250
+                     6f at 300
+                     -3f at 350
+                     0f at 400
+                 }
+             )
+         }
+      }
+ 
+      // (Tag loading removed - Tags feature disabled)
+ 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -235,12 +242,28 @@ fun AddEditTodoDialog(
                                 }
                             )
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                HorizontalDivider()
+                     }
+                 }
+ 
+                 Spacer(modifier = Modifier.height(8.dp))
+ 
+                 // Estimated Duration
+                 OutlinedTextField(
+                     value = estimatedDuration,
+                     onValueChange = { input ->
+                         if (input.all { it.isDigit() }) {
+                             estimatedDuration = input
+                         }
+                     },
+                     label = { Text("Estimated Duration (minutes)") },
+                     placeholder = { Text("e.g., 60") },
+                     singleLine = true,
+                     modifier = Modifier.fillMaxWidth()
+                 )
+ 
+                 Spacer(modifier = Modifier.height(12.dp))
+ 
+                 HorizontalDivider()
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -477,19 +500,20 @@ fun AddEditTodoDialog(
                     if (titleError) {
                         showError = true
                         triggerShake++
-                    } else {
-                        onConfirm(
-                            title.trim(),
-                            description.trim(),
-                            selectedPriority,
-                            selectedCategory,
-                            if (hasDeadline) deadline else null,
-                            if (hasReminder) reminderTime else null,
-                            selectedRecurrence,
-                            isStarred,
-                            taskListId
-                        )
-                    }
+                     } else {
+                         onConfirm(
+                             title.trim(),
+                             description.trim(),
+                             selectedPriority,
+                             selectedCategory,
+                             if (hasDeadline) deadline else null,
+                             if (hasReminder) reminderTime else null,
+                             selectedRecurrence,
+                             estimatedDuration.toIntOrNull(),
+                             isStarred,
+                             taskListId
+                         )
+                     }
                 }
             ) {
                 Text("Save")
@@ -500,34 +524,34 @@ fun AddEditTodoDialog(
                 Text("Cancel")
             }
         }
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddEditTodoDialogAddPreview() {
-    TodolistTheme {
-        AddEditTodoDialog(
-            onDismiss = {},
-            onConfirm = { _, _, _, _, _, _, _, _, _ -> }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddEditTodoDialogEditPreview() {
-    TodolistTheme {
-        AddEditTodoDialog(
-            todo = TodoItem(
-                title = "Sample Task",
-                description = "This is a sample task description",
-                priority = Priority.HIGH,
-                category = Category.WORK,
-                isStarred = true
-            ),
-            onDismiss = {},
-            onConfirm = { _, _, _, _, _, _, _, _, _ -> }
-        )
-    }
-}
+     )
+ }
+ 
+ @Preview(showBackground = true)
+ @Composable
+ fun AddEditTodoDialogAddPreview() {
+     TodolistTheme {
+         AddEditTodoDialog(
+             onDismiss = {},
+             onConfirm = { _, _, _, _, _, _, _, _, _, _ -> }
+         )
+     }
+ }
+ 
+ @Preview(showBackground = true)
+ @Composable
+ fun AddEditTodoDialogEditPreview() {
+     TodolistTheme {
+         AddEditTodoDialog(
+             todo = TodoItem(
+                 title = "Sample Task",
+                 description = "This is a sample task description",
+                 priority = Priority.HIGH,
+                 category = Category.WORK,
+                 isStarred = true
+             ),
+             onDismiss = {},
+             onConfirm = { _, _, _, _, _, _, _, _, _, _ -> }
+         )
+     }
+ }

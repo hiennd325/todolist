@@ -27,7 +27,8 @@ enum class SortMode {
 }
 
 enum class FilterMode {
-    ALL, BY_CATEGORY, BY_PRIORITY, BY_COMPLETION, STARRED
+    ALL, BY_CATEGORY, BY_PRIORITY, BY_COMPLETION, STARRED,
+    TODAY, UPCOMING, OVERDUE, COMPLETED_TODAY
 }
 
 data class TodoUiState(
@@ -103,6 +104,10 @@ class TodoViewModel(
                 repository.getTodosByCategory(params.category)
             params.filter == FilterMode.BY_PRIORITY && params.priority != null ->
                 repository.getTodosByPriority(params.priority)
+            params.filter == FilterMode.TODAY -> repository.getTodosDueToday()
+            params.filter == FilterMode.UPCOMING -> repository.getUpcomingTodos()
+            params.filter == FilterMode.OVERDUE -> repository.getOverdueTodos()
+            params.filter == FilterMode.COMPLETED_TODAY -> repository.getCompletedToday()
             else -> when (params.sort) {
                 SortMode.DEADLINE -> repository.getTodosSortedByDeadline()
                 SortMode.PRIORITY -> repository.getTodosSortedByPriority()
@@ -267,6 +272,7 @@ class TodoViewModel(
         deadline: Long? = null,
         reminderTime: Long? = null,
         recurrenceType: RecurrenceType = RecurrenceType.NONE,
+        estimatedDurationMinutes: Int? = null,
         isStarred: Boolean = false,
         taskListId: Int = _currentTaskListId.value
     ) {
@@ -280,6 +286,7 @@ class TodoViewModel(
                     deadline = deadline,
                     reminderTime = reminderTime,
                     recurrenceType = recurrenceType,
+                    estimatedDurationMinutes = estimatedDurationMinutes,
                     isStarred = isStarred,
                     taskListId = taskListId
                 )
