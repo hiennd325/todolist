@@ -39,38 +39,51 @@ class StatisticsViewModel(
     private val _selectedTimeRange = MutableStateFlow(TimeRange.LAST_30_DAYS)
     val selectedTimeRange: StateFlow<TimeRange> = _selectedTimeRange
 
-    val uiState: StateFlow<StatisticsUiState> = combine(
-        statisticsRepository.totalCount,
-        statisticsRepository.completedCount,
-        statisticsRepository.starredCount,
-        statisticsRepository.getStatisticsByCategory(),
-        statisticsRepository.getStatisticsByPriority(),
-        statisticsRepository.getDailyStatistics(),
-        statisticsRepository.getWeeklyStatistics(),
-        _selectedTimeRange
-    ) { flows ->
-        val totalCount = flows[0] as Int
-        val completedCount = flows[1] as Int
-        val starredCount = flows[2] as Int
-        val categoryStats = flows[3] as List<CategoryStatistic>
-        val priorityStats = flows[4] as List<PriorityStatistic>
-        val dailyStats = flows[5] as List<DailyStatistic>
-        val weeklyStats = flows[6] as List<WeeklyStatistic>
-        val timeRange = flows[7] as TimeRange
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<StatisticsUiState> = _selectedTimeRange.flatMapLatest { timeRange ->
+        val calendar = Calendar.getInstance()
+        val startDate = if (timeRange == TimeRange.ALL_TIME) 0L else {
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            calendar.add(Calendar.DAY_OF_YEAR, -timeRange.days)
+            calendar.timeInMillis
+        }
 
-        StatisticsUiState(
-            totalCount = totalCount,
-            completedCount = completedCount,
-            pendingCount = totalCount - completedCount,
-            starredCount = starredCount,
-            completionRate = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f,
-            categoryStats = categoryStats,
-            priorityStats = priorityStats,
-            dailyStats = filterDailyStatsByTimeRange(dailyStats, timeRange),
-            weeklyStats = weeklyStats,
-            isLoading = false,
-            selectedTimeRange = timeRange
-        )
+        combine(
+            statisticsRepository.getTotalCount(startDate),
+            statisticsRepository.getCompletedCount(startDate),
+            statisticsRepository.getStarredCount(),
+            statisticsRepository.getStatisticsByCategory(startDate),
+            statisticsRepository.getStatisticsByPriority(startDate),
+            statisticsRepository.getDailyStatistics(maxOf(30, timeRange.days + 7)),
+            statisticsRepository.getWeeklyStatistics(),
+            flowOf(timeRange)
+        ) { flows ->
+            val totalCount = flows[0] as Int
+            val completedCount = flows[1] as Int
+            val starredCount = flows[2] as Int
+            val categoryStats = flows[3] as List<CategoryStatistic>
+            val priorityStats = flows[4] as List<PriorityStatistic>
+            val dailyStats = flows[5] as List<DailyStatistic>
+            val weeklyStats = flows[6] as List<WeeklyStatistic>
+            val currentRange = flows[7] as TimeRange
+
+            StatisticsUiState(
+                totalCount = totalCount,
+                completedCount = completedCount,
+                pendingCount = totalCount - completedCount,
+                starredCount = starredCount,
+                completionRate = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f,
+                categoryStats = categoryStats,
+                priorityStats = priorityStats,
+                dailyStats = filterDailyStatsByTimeRange(dailyStats, currentRange),
+                weeklyStats = weeklyStats,
+                isLoading = false,
+                selectedTimeRange = currentRange
+            )
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

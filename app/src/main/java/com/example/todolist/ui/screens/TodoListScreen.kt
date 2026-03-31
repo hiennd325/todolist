@@ -65,6 +65,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -148,7 +149,9 @@ fun TodoListScreen(
         }
     }
 
-    var expandedDates by remember { mutableStateOf(setOf<String>()) }
+    var expandedDates by remember { 
+        mutableStateOf(setOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))) 
+    }
 
     // Export launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -713,8 +716,10 @@ fun TodoListScreen(
                                             subtasks = subtasks,
                                             onToggleComplete = { viewModel.toggleComplete(todo) },
                                             onToggleStarred = { viewModel.toggleStarred(todo) },
-                                            onEdit = {
+                                            onToggleExpand = {
                                                 expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
+                                            },
+                                            onLongClick = {
                                                 editingTodo = todo
                                             },
                                             onDelete = { viewModel.deleteTodo(todo) },
@@ -752,8 +757,10 @@ fun TodoListScreen(
                                     subtasks = subtasks,
                                     onToggleComplete = { viewModel.toggleComplete(todo) },
                                     onToggleStarred = { viewModel.toggleStarred(todo) },
-                                    onEdit = {
+                                    onToggleExpand = {
                                         expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
+                                    },
+                                    onLongClick = {
                                         editingTodo = todo
                                     },
                                     onDelete = { viewModel.deleteTodo(todo) },
@@ -945,7 +952,8 @@ private fun TodoItemCardWithExpansion(
     subtasks: Map<Int, List<com.example.todolist.data.model.Subtask>>,
     onToggleComplete: () -> Unit,
     onToggleStarred: () -> Unit,
-    onEdit: () -> Unit,
+    onToggleExpand: () -> Unit,
+    onLongClick: () -> Unit,
     onDelete: () -> Unit,
     onToggleSelection: () -> Unit,
     onLoadSubtasks: () -> Unit,
@@ -969,14 +977,15 @@ private fun TodoItemCardWithExpansion(
                             if (isSelectionMode) {
                                 onToggleSelection()
                             } else {
-                                onEdit()
+                                onToggleExpand()
                             }
                         },
                         onLongClick = {
                             if (!isSelectionMode) {
-                                onSelectionModeChange()
+                                onLongClick()
+                            } else {
+                                onToggleSelection()
                             }
-                            onToggleSelection()
                         }
                     ),
                 verticalAlignment = Alignment.CenterVertically
@@ -992,7 +1001,7 @@ private fun TodoItemCardWithExpansion(
                     todo = todo,
                     onToggleComplete = onToggleComplete,
                     onToggleStarred = onToggleStarred,
-                    onEdit = onEdit,
+                    onEdit = onLongClick,
                     onDelete = onDelete,
                     onShowUndoSnackbar = onShowUndoSnackbar,
                     modifier = Modifier.weight(1f)

@@ -9,19 +9,19 @@ import java.util.Calendar
 
 class StatisticsRepository(private val todoDao: TodoDao) {
 
-    val totalCount: Flow<Int> = todoDao.getTodoCount()
-    val completedCount: Flow<Int> = todoDao.getCompletedCount()
-    val starredCount: Flow<Int> = todoDao.getStarredCount()
+    fun getTotalCount(startDate: Long = 0): Flow<Int> = todoDao.getTodoCountSince(startDate)
+    fun getCompletedCount(startDate: Long = 0): Flow<Int> = todoDao.getCompletedCountSince(startDate)
+    fun getStarredCount(): Flow<Int> = todoDao.getStarredCount()
 
-    fun getCompletionRate(): Flow<Float> {
-        return totalCount.combine(completedCount) { total, completed ->
+    fun getCompletionRate(startDate: Long = 0): Flow<Float> {
+        return getTotalCount(startDate).combine(getCompletedCount(startDate)) { total, completed ->
             if (total == 0) 0f
             else completed.toFloat() / total.toFloat()
         }
     }
 
-    fun getStatisticsByCategory(): Flow<List<CategoryStatistic>> {
-        return todoDao.getStatisticsByCategory().map { list ->
+    fun getStatisticsByCategory(startDate: Long = 0): Flow<List<CategoryStatistic>> {
+        return todoDao.getStatisticsByCategory(startDate).map { list ->
             list.map { result ->
                 CategoryStatistic(
                     category = Category.fromString(result.category),
@@ -32,8 +32,8 @@ class StatisticsRepository(private val todoDao: TodoDao) {
         }
     }
 
-    fun getStatisticsByPriority(): Flow<List<PriorityStatistic>> {
-        return todoDao.getStatisticsByPriority().map { list ->
+    fun getStatisticsByPriority(startDate: Long = 0): Flow<List<PriorityStatistic>> {
+        return todoDao.getStatisticsByPriority(startDate).map { list ->
             list.map { result ->
                 PriorityStatistic(
                     priority = Priority.fromString(result.priority),
@@ -77,13 +77,13 @@ class StatisticsRepository(private val todoDao: TodoDao) {
         }
     }
 
-    fun getOverallStatistics(): Flow<OverallStatistics> {
+    fun getOverallStatistics(startDate: Long = 0): Flow<OverallStatistics> {
         return combine(
-            totalCount,
-            completedCount,
-            starredCount,
-            getStatisticsByCategory(),
-            getStatisticsByPriority(),
+            getTotalCount(startDate),
+            getCompletedCount(startDate),
+            getStarredCount(),
+            getStatisticsByCategory(startDate),
+            getStatisticsByPriority(startDate),
             getDailyStatistics(),
             getWeeklyStatistics()
         ) { args ->

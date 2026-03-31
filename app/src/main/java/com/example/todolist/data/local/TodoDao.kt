@@ -97,7 +97,7 @@ interface TodoDao {
     suspend fun deleteInstancesByParentId(parentId: Int)
 
     // Smart Lists queries
-    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline <= :endOfDay ORDER BY deadline ASC")
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND ((deadline IS NOT NULL AND deadline <= :endOfDay) OR (reminderTime IS NOT NULL AND reminderTime <= :endOfDay) OR (isRecurringInstance = 1 AND occurrenceDate IS NOT NULL AND occurrenceDate <= :endOfDay)) ORDER BY CASE WHEN deadline IS NOT NULL THEN deadline WHEN reminderTime IS NOT NULL THEN reminderTime ELSE occurrenceDate END ASC")
     fun getTodosDueToday(endOfDay: Long): Flow<List<TodoItem>>
 
     @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline < :currentTime ORDER BY deadline ASC")
@@ -129,6 +129,12 @@ interface TodoDao {
     suspend fun deleteTodosByIds(ids: List<Int>)
 
     // Statistics
+    @Query("SELECT COUNT(*) FROM todo_items WHERE createdAt >= :startDate")
+    fun getTodoCountSince(startDate: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM todo_items WHERE isCompleted = 1 AND updatedAt >= :startDate")
+    fun getCompletedCountSince(startDate: Long): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM todo_items")
     fun getTodoCount(): Flow<Int>
 
@@ -152,17 +158,21 @@ interface TodoDao {
     @Query("""
         SELECT category, COUNT(*) as total, 
         SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed 
-        FROM todo_items GROUP BY category
+        FROM todo_items 
+        WHERE createdAt >= :startDate
+        GROUP BY category
     """)
-    fun getStatisticsByCategory(): Flow<List<CategoryStatisticResult>>
+    fun getStatisticsByCategory(startDate: Long): Flow<List<CategoryStatisticResult>>
 
     // Statistics by priority
     @Query("""
         SELECT priority, COUNT(*) as total,
         SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) as completed
-        FROM todo_items GROUP BY priority
+        FROM todo_items 
+        WHERE createdAt >= :startDate
+        GROUP BY priority
     """)
-    fun getStatisticsByPriority(): Flow<List<PriorityStatisticResult>>
+    fun getStatisticsByPriority(startDate: Long): Flow<List<PriorityStatisticResult>>
 
     // Daily statistics for last 30 days
     @Query("""
