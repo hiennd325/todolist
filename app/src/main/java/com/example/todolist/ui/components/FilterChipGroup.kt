@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
  import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.List
  import androidx.compose.material.icons.Icons
  import androidx.compose.material.icons.filled.Check
  import androidx.compose.material.icons.filled.Star
@@ -16,10 +19,11 @@ import androidx.compose.foundation.rememberScrollState
  import androidx.compose.material.icons.filled.Upcoming
  import androidx.compose.material.icons.filled.Warning
  import androidx.compose.material.icons.filled.CheckCircle
- import androidx.compose.material3.FilterChip
- import androidx.compose.material3.Icon
- import androidx.compose.material3.MaterialTheme
- import androidx.compose.material3.Text
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
  import androidx.compose.runtime.Composable
  import androidx.compose.ui.Alignment
  import androidx.compose.ui.Modifier
@@ -48,14 +52,15 @@ fun FilterChipGroup(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Quick Filters Section
         Row(
             modifier = Modifier.horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // All filter
+            // All
             FilterChip(
                 selected = filterMode == FilterMode.ALL,
                 onClick = { onFilterModeChanged(FilterMode.ALL) },
@@ -63,15 +68,19 @@ fun FilterChipGroup(
                 leadingIcon = if (filterMode == FilterMode.ALL) {
                     {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = Icons.Default.List,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                } else null
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
 
-            // Starred filter
+            // Starred
             FilterChip(
                 selected = filterMode == FilterMode.STARRED,
                 onClick = {
@@ -86,159 +95,119 @@ fun FilterChipGroup(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = if (filterMode == FilterMode.STARRED) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(16.dp)
                     )
-                 }
-             )
- 
-             Text(
-                 text = "Smart:",
-                 style = MaterialTheme.typography.labelSmall,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                 fontSize = 11.sp
-             )
- 
-             // Today
-             FilterChip(
-                 selected = filterMode == FilterMode.TODAY,
-                 onClick = {
-                     if (filterMode == FilterMode.TODAY) {
-                         onFilterModeChanged(FilterMode.ALL)
-                     } else {
-                         onFilterModeChanged(FilterMode.TODAY)
-                     }
-                 },
-                 label = { Text("Today") },
-                 leadingIcon = if (filterMode == FilterMode.TODAY) {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Check,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 } else {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Today,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 }
-             )
- 
-             // Upcoming
-             FilterChip(
-                 selected = filterMode == FilterMode.UPCOMING,
-                 onClick = {
-                     if (filterMode == FilterMode.UPCOMING) {
-                         onFilterModeChanged(FilterMode.ALL)
-                     } else {
-                         onFilterModeChanged(FilterMode.UPCOMING)
-                     }
-                 },
-                 label = { Text("Upcoming") },
-                 leadingIcon = if (filterMode == FilterMode.UPCOMING) {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Check,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 } else {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Upcoming,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 }
-             )
- 
-             // Overdue
-             FilterChip(
-                 selected = filterMode == FilterMode.OVERDUE,
-                 onClick = {
-                     if (filterMode == FilterMode.OVERDUE) {
-                         onFilterModeChanged(FilterMode.ALL)
-                     } else {
-                         onFilterModeChanged(FilterMode.OVERDUE)
-                     }
-                 },
-                 label = { Text("Overdue") },
-                 leadingIcon = if (filterMode == FilterMode.OVERDUE) {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Check,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 } else {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Warning,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 }
-             )
- 
-             // Completed Today
-             FilterChip(
-                 selected = filterMode == FilterMode.COMPLETED_TODAY,
-                 onClick = {
-                     if (filterMode == FilterMode.COMPLETED_TODAY) {
-                         onFilterModeChanged(FilterMode.ALL)
-                     } else {
-                         onFilterModeChanged(FilterMode.COMPLETED_TODAY)
-                     }
-                 },
-                 label = { Text("Done Today") },
-                 leadingIcon = if (filterMode == FilterMode.COMPLETED_TODAY) {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.Check,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 } else {
-                     {
-                         Icon(
-                             imageVector = Icons.Default.CheckCircle,
-                             contentDescription = null,
-                             modifier = Modifier.size(16.dp)
-                         )
-                     }
-                 }
-             )
- 
-             Text(
-                 text = "|",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                fontSize = 11.sp
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = if (filterMode == FilterMode.STARRED) 
+                        Color(0xFFFFD700).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                    selectedLabelColor = if (filterMode == FilterMode.STARRED) 
+                        Color(0xFFFFA500) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
 
+            // Today
+            FilterChip(
+                selected = filterMode == FilterMode.TODAY,
+                onClick = {
+                    if (filterMode == FilterMode.TODAY) {
+                        onFilterModeChanged(FilterMode.ALL)
+                    } else {
+                        onFilterModeChanged(FilterMode.TODAY)
+                    }
+                },
+                label = { Text("Today") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Today,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+
+            // Upcoming
+            FilterChip(
+                selected = filterMode == FilterMode.UPCOMING,
+                onClick = {
+                    if (filterMode == FilterMode.UPCOMING) {
+                        onFilterModeChanged(FilterMode.ALL)
+                    } else {
+                        onFilterModeChanged(FilterMode.UPCOMING)
+                    }
+                },
+                label = { Text("Upcoming") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Upcoming,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+
+            // Overdue
+            FilterChip(
+                selected = filterMode == FilterMode.OVERDUE,
+                onClick = {
+                    if (filterMode == FilterMode.OVERDUE) {
+                        onFilterModeChanged(FilterMode.ALL)
+                    } else {
+                        onFilterModeChanged(FilterMode.OVERDUE)
+                    }
+                },
+                label = { Text("Overdue") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            )
+
+            // Completed Today
+            FilterChip(
+                selected = filterMode == FilterMode.COMPLETED_TODAY,
+                onClick = {
+                    if (filterMode == FilterMode.COMPLETED_TODAY) {
+                        onFilterModeChanged(FilterMode.ALL)
+                    } else {
+                        onFilterModeChanged(FilterMode.COMPLETED_TODAY)
+                    }
+                },
+                label = { Text("Done Today") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+        }
+
+        // Show/Hide Completed
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             FilterChip(
                 selected = !showCompleted,
                 onClick = { onShowCompletedChanged(!showCompleted) },
-                label = { Text("Hide completed") },
-                leadingIcon = if (!showCompleted) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
+                label = { Text(if (!showCompleted) "Show completed tasks" else "Hide completed tasks") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = if (!showCompleted) Icons.Default.CheckCircle else Icons.Default.List,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             )
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -79,7 +81,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.todolist.data.export.ExportImportManager
 import com.example.todolist.data.model.TodoItem
@@ -89,6 +93,7 @@ import com.example.todolist.ui.components.FilterChipGroup
 import com.example.todolist.ui.components.SubtaskSection
 import com.example.todolist.ui.components.SwipeableTodoItemCard
 import com.example.todolist.ui.components.TaskListDrawer
+import com.example.todolist.ui.viewmodel.FilterMode
 import com.example.todolist.ui.viewmodel.SortMode
 import com.example.todolist.ui.viewmodel.TodoViewModel
 import kotlinx.coroutines.launch
@@ -611,44 +616,11 @@ fun TodoListScreen(
 
                 // Todo list
                 if (uiState.todos.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = if (filterMode == com.example.todolist.ui.viewmodel.FilterMode.STARRED) {
-                                    Icons.Default.Star
-                                } else {
-                                    Icons.Default.List
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = when {
-                                    searchQuery.isNotEmpty() -> "No tasks found"
-                                    filterMode == com.example.todolist.ui.viewmodel.FilterMode.STARRED -> "No starred tasks"
-                                    else -> "No tasks yet"
-                                },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Tap the + button to add a new task",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    EnhancedEmptyState(
+                        searchQuery = searchQuery,
+                        filterMode = filterMode,
+                        onAddTask = { showAddDialog = true }
+                    )
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(
@@ -823,5 +795,80 @@ fun TodoListScreen(
                  editingTodo = null
              }
          )
-     }
+      }
+}
+
+@Composable
+fun EnhancedEmptyState(
+    searchQuery: String,
+    filterMode: FilterMode,
+    onAddTask: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = when {
+                searchQuery.isNotEmpty() -> Icons.Default.Search
+                filterMode == FilterMode.STARRED -> Icons.Default.Star
+                else -> Icons.Default.AddCircle
+            },
+            contentDescription = null,
+            modifier = Modifier.size(96.dp),
+            tint = when {
+                searchQuery.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                filterMode == FilterMode.STARRED -> Color(0xFFFFD700).copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            }
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = when {
+                searchQuery.isNotEmpty() -> "No tasks match your search"
+                filterMode == FilterMode.STARRED -> "No starred tasks yet"
+                filterMode == FilterMode.OVERDUE -> "No overdue tasks"
+                filterMode == FilterMode.TODAY -> "No tasks for today"
+                filterMode == FilterMode.UPCOMING -> "No upcoming tasks"
+                filterMode == FilterMode.COMPLETED_TODAY -> "No tasks completed today"
+                else -> "Your task list is empty"
+            },
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = when {
+                searchQuery.isNotEmpty() -> "Try a different search term or clear filters"
+                filterMode != FilterMode.ALL && filterMode != FilterMode.STARRED -> "Switch to 'All' to see all tasks"
+                else -> "Start by adding your first task"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onAddTask,
+            modifier = Modifier.fillMaxWidth(0.6f)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = if (searchQuery.isNotEmpty() || filterMode != FilterMode.ALL) "Add Task" else "Add Your First Task")
+        }
+    }
 }
