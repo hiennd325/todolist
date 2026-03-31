@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,16 +88,15 @@ fun TodoItemCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .drawBehind {
+                    drawRect(
+                        color = todo.priority.color,
+                        size = androidx.compose.ui.geometry.Size(4.dp.toPx(), this.size.height)
+                    )
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Priority indicator
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(todo.priority.color)
-            )
+            Spacer(modifier = Modifier.width(4.dp))
 
             Row(
                 modifier = Modifier

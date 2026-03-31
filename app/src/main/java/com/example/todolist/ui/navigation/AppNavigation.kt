@@ -81,7 +81,7 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Tasks.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             composable(Screen.Tasks.route) {
                 TodoListScreen(
