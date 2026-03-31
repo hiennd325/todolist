@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
  import com.example.todolist.data.model.CalendarDisplayMode
  import com.example.todolist.data.model.TodoItem
+ import com.example.todolist.data.model.RecurrenceType
  import com.example.todolist.data.repository.TodoRepository
  import com.example.todolist.data.settings.SettingsManager
  import kotlinx.coroutines.flow.*
@@ -68,7 +69,30 @@ class CalendarViewModel(
         mode: CalendarDisplayMode
     ): Map<String, List<TodoItem>> {
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        return todos.groupBy { todo ->
+        
+        // Filter tasks to avoid duplication and clutter
+        val relevantTodos = todos.filter { todo ->
+            when (mode) {
+                CalendarDisplayMode.BY_CREATED -> {
+                    // In "Created Day" view, only show the parent task (when the user actually created the recurring series)
+                    !todo.isRecurringInstance
+                }
+                CalendarDisplayMode.BY_DEADLINE -> {
+                    // In "Deadline" view, show instances. 
+                    // If it's a parent task with recurrence, we might want to hide it if instances already cover its deadline
+                    // to avoid "Day 1" duplication.
+                    if (todo.recurrenceType != RecurrenceType.NONE && !todo.isRecurringInstance) {
+                        // Hide parent if it has instances (instances start from the parent's date)
+                        val hasInstances = todos.any { it.recurrenceParentId == todo.id }
+                        !hasInstances
+                    } else {
+                        true
+                    }
+                }
+            }
+        }
+
+        return relevantTodos.groupBy { todo ->
             val timestamp = when (mode) {
                 CalendarDisplayMode.BY_DEADLINE -> {
                     when {

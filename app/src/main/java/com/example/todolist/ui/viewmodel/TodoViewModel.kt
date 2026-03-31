@@ -64,7 +64,7 @@ class TodoViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _filterMode = MutableStateFlow(FilterMode.ALL)
+    private val _filterMode = MutableStateFlow(FilterMode.TODAY)
     val filterMode: StateFlow<FilterMode> = _filterMode
 
     private val _selectedCategory = MutableStateFlow<Category?>(null)

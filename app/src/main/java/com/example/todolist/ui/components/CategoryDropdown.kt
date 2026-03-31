@@ -40,6 +40,7 @@ fun CategoryDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text("Category") },
+            singleLine = true,
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,

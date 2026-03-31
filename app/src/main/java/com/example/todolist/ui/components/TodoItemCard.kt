@@ -234,6 +234,7 @@ fun TodoItemCard(
                     // Deadline & Duration row
                     if (todo.deadline != null || (todo.estimatedDurationMinutes != null && todo.estimatedDurationMinutes > 0)) {
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -254,6 +255,7 @@ fun TodoItemCard(
                                 val isUrgent = daysUntil <= 2 && daysUntil >= 0
 
                                 Row(
+                                    modifier = Modifier.weight(1f, fill = false),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
@@ -268,6 +270,8 @@ fun TodoItemCard(
                                     Text(
                                         text = deadlineText,
                                         style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                         color = if (daysUntil < 0) MaterialTheme.colorScheme.error 
                                                else if (isUrgent) MaterialTheme.colorScheme.error 
                                                else MaterialTheme.colorScheme.onSurfaceVariant
@@ -278,6 +282,7 @@ fun TodoItemCard(
                                         Text(
                                             text = SimpleDateFormat("HH:mm", Locale.US).format(Date(deadline)),
                                             style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -299,6 +304,8 @@ fun TodoItemCard(
                                     Text(
                                         text = formatDuration(todo.estimatedDurationMinutes),
                                         style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false,
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 }

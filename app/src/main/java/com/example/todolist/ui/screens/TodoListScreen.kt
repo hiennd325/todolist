@@ -97,6 +97,11 @@ import com.example.todolist.ui.viewmodel.FilterMode
 import com.example.todolist.ui.viewmodel.SortMode
 import com.example.todolist.ui.viewmodel.TodoViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ChevronRight
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -130,6 +135,20 @@ fun TodoListScreen(
 
     val isSelectionMode = uiState.isSelectionMode
     val selectedTodoIds = uiState.selectedTodoIds
+
+    // Grouping by date for ALL mode
+    val groupedTodosByDate = remember(uiState.todos, filterMode) {
+        if (filterMode == FilterMode.ALL) {
+            uiState.todos.groupBy { todo ->
+                val date = Date(todo.deadline ?: todo.createdAt)
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
+            }.toSortedMap()
+        } else {
+            emptyMap()
+        }
+    }
+
+    var expandedDates by remember { mutableStateOf(setOf<String>()) }
 
     // Export launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -629,46 +648,69 @@ fun TodoListScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(
-                            items = uiState.todos,
-                            key = { it.id }
-                        ) { todo ->
-                            AnimatedVisibility(
-                                visible = true,
-                                enter = fadeIn() + slideInVertically(),
-                                exit = fadeOut() + slideOutVertically()
-                            ) {
-                                Column {
-                                    Row(
+                        if (filterMode == FilterMode.ALL) {
+                            groupedTodosByDate.forEach { (dateStr, groupTasks) ->
+                                val isExpanded = expandedDates.contains(dateStr)
+                                val formattedDate = try {
+                                    val dateObj = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateStr)
+                                    SimpleDateFormat("EEEE, MMM dd, yyyy", Locale.getDefault()).format(dateObj ?: Date())
+                                } catch (e: Exception) {
+                                    dateStr
+                                }
+
+                                item(key = "header_$dateStr") {
+                                    Surface(
+                                        onClick = {
+                                            expandedDates = if (isExpanded) expandedDates - dateStr else expandedDates + dateStr
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (isSelectionMode) {
-                                                        viewModel.toggleTodoSelection(todo.id)
-                                                    } else {
-                                                        expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
-                                                        editingTodo = todo
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    if (!isSelectionMode) {
-                                                        viewModel.toggleSelectionMode()
-                                                    }
-                                                    viewModel.toggleTodoSelection(todo.id)
-                                                }
-                                            ),
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(horizontal = 16.dp, vertical = 4.dp)
                                     ) {
-                                        if (isSelectionMode) {
-                                            Checkbox(
-                                                checked = todo.id in selectedTodoIds,
-                                                onCheckedChange = { viewModel.toggleTodoSelection(todo.id) },
-                                                modifier = Modifier.padding(start = 8.dp)
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
                                             )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                text = formattedDate,
+                                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Surface(
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                            ) {
+                                                Text(
+                                                    text = "${groupTasks.size}",
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
                                         }
-                                        SwipeableTodoItemCard(
+                                    }
+                                }
+
+                                if (isExpanded) {
+                                    items(
+                                        items = groupTasks,
+                                        key = { it.id }
+                                    ) { todo ->
+                                        TodoItemCardWithExpansion(
                                             todo = todo,
+                                            isSelectionMode = isSelectionMode,
+                                            selectedTodoIds = selectedTodoIds,
+                                            expandedTodoId = expandedTodoId,
+                                            subtasks = subtasks,
                                             onToggleComplete = { viewModel.toggleComplete(todo) },
                                             onToggleStarred = { viewModel.toggleStarred(todo) },
                                             onEdit = {
@@ -676,6 +718,12 @@ fun TodoListScreen(
                                                 editingTodo = todo
                                             },
                                             onDelete = { viewModel.deleteTodo(todo) },
+                                            onToggleSelection = { viewModel.toggleTodoSelection(todo.id) },
+                                            onLoadSubtasks = { viewModel.loadSubtasks(todo.id) },
+                                            onAddSubtask = { viewModel.addSubtask(todo.id, it) },
+                                            onToggleSubtask = { viewModel.toggleSubtask(it) },
+                                            onDeleteSubtask = { viewModel.deleteSubtask(it) },
+                                            onSelectionModeChange = { viewModel.toggleSelectionMode() },
                                             onShowUndoSnackbar = { undoAction ->
                                                 scope.launch {
                                                     val result = snackbarHostState.showSnackbar(
@@ -686,33 +734,47 @@ fun TodoListScreen(
                                                         undoAction()
                                                     }
                                                 }
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-
-                                    // Subtask section (expanded)
-                                    if (expandedTodoId == todo.id) {
-                                        val todoSubtasks = subtasks[todo.id] ?: emptyList()
-                                        LaunchedEffect(todo.id) {
-                                            viewModel.loadSubtasks(todo.id)
-                                        }
-                                        SubtaskSection(
-                                            todoId = todo.id,
-                                            subtasks = todoSubtasks,
-                                            onAddSubtask = { title ->
-                                                viewModel.addSubtask(todo.id, title)
-                                            },
-                                            onToggleSubtask = { subtask ->
-                                                viewModel.toggleSubtask(subtask)
-                                            },
-                                            onDeleteSubtask = { subtask ->
-                                                viewModel.deleteSubtask(subtask)
-                                            },
-                                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                                            }
                                         )
                                     }
                                 }
+                            }
+                        } else {
+                            items(
+                                items = uiState.todos,
+                                key = { it.id }
+                            ) { todo ->
+                                TodoItemCardWithExpansion(
+                                    todo = todo,
+                                    isSelectionMode = isSelectionMode,
+                                    selectedTodoIds = selectedTodoIds,
+                                    expandedTodoId = expandedTodoId,
+                                    subtasks = subtasks,
+                                    onToggleComplete = { viewModel.toggleComplete(todo) },
+                                    onToggleStarred = { viewModel.toggleStarred(todo) },
+                                    onEdit = {
+                                        expandedTodoId = if (expandedTodoId == todo.id) null else todo.id
+                                        editingTodo = todo
+                                    },
+                                    onDelete = { viewModel.deleteTodo(todo) },
+                                    onToggleSelection = { viewModel.toggleTodoSelection(todo.id) },
+                                    onLoadSubtasks = { viewModel.loadSubtasks(todo.id) },
+                                    onAddSubtask = { viewModel.addSubtask(todo.id, it) },
+                                    onToggleSubtask = { viewModel.toggleSubtask(it) },
+                                    onDeleteSubtask = { viewModel.deleteSubtask(it) },
+                                    onSelectionModeChange = { viewModel.toggleSelectionMode() },
+                                    onShowUndoSnackbar = { undoAction ->
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "Task deleted",
+                                                actionLabel = "Undo"
+                                            )
+                                            if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                undoAction()
+                                            }
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
@@ -869,6 +931,89 @@ fun EnhancedEmptyState(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = if (searchQuery.isNotEmpty() || filterMode != FilterMode.ALL) "Add Task" else "Add Your First Task")
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TodoItemCardWithExpansion(
+    todo: com.example.todolist.data.model.TodoItem,
+    isSelectionMode: Boolean,
+    selectedTodoIds: Set<Int>,
+    expandedTodoId: Int?,
+    subtasks: Map<Int, List<com.example.todolist.data.model.Subtask>>,
+    onToggleComplete: () -> Unit,
+    onToggleStarred: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleSelection: () -> Unit,
+    onLoadSubtasks: () -> Unit,
+    onAddSubtask: (String) -> Unit,
+    onToggleSubtask: (com.example.todolist.data.model.Subtask) -> Unit,
+    onDeleteSubtask: (com.example.todolist.data.model.Subtask) -> Unit,
+    onSelectionModeChange: () -> Unit,
+    onShowUndoSnackbar: (() -> Unit) -> Unit
+) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = true,
+        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(),
+        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically()
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = {
+                            if (isSelectionMode) {
+                                onToggleSelection()
+                            } else {
+                                onEdit()
+                            }
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                onSelectionModeChange()
+                            }
+                            onToggleSelection()
+                        }
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = todo.id in selectedTodoIds,
+                        onCheckedChange = { onToggleSelection() },
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                com.example.todolist.ui.components.SwipeableTodoItemCard(
+                    todo = todo,
+                    onToggleComplete = onToggleComplete,
+                    onToggleStarred = onToggleStarred,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onShowUndoSnackbar = onShowUndoSnackbar,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Subtask section (expanded)
+            if (expandedTodoId == todo.id) {
+                val todoSubtasks = subtasks[todo.id] ?: emptyList()
+                androidx.compose.runtime.LaunchedEffect(todo.id) {
+                    onLoadSubtasks()
+                }
+                com.example.todolist.ui.components.SubtaskSection(
+                    todoId = todo.id,
+                    subtasks = todoSubtasks,
+                    onAddSubtask = onAddSubtask,
+                    onToggleSubtask = onToggleSubtask,
+                    onDeleteSubtask = onDeleteSubtask,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }

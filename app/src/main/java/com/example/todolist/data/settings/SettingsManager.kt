@@ -27,12 +27,12 @@ class SettingsManager(private val context: Context) {
      }
 
      val settingsFlow: Flow<Settings> = context.dataStore.data.map { preferences ->
-         val displayModeStr = preferences[CALENDAR_DISPLAY_MODE] ?: "BY_CREATED"
-         val calendarDisplayMode = try {
-             CalendarDisplayMode.valueOf(displayModeStr)
-         } catch (e: IllegalArgumentException) {
-             CalendarDisplayMode.BY_CREATED
-         }
+        val displayModeStr = preferences[CALENDAR_DISPLAY_MODE] ?: "BY_DEADLINE"
+        val calendarDisplayMode = try {
+            CalendarDisplayMode.valueOf(displayModeStr)
+        } catch (e: IllegalArgumentException) {
+            CalendarDisplayMode.BY_DEADLINE
+        }
          Settings(
              themePreset = ThemePreset.fromString(preferences[THEME_PRESET] ?: "Default"),
              darkMode = preferences[DARK_MODE] ?: "system",
@@ -96,6 +96,6 @@ class SettingsManager(private val context: Context) {
          val fontSize: String = "medium",
          val customPrimaryColor: String? = null,
          val customPrimaryDarkColor: String? = null,
-         val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.BY_CREATED
+         val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.BY_DEADLINE
      )
 }
