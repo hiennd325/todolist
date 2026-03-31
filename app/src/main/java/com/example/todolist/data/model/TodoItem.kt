@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("taskListId")]
+    indices = [Index("taskListId"), Index("recurrenceParentId"), Index("occurrenceDate")]
 )
 data class TodoItem(
     @PrimaryKey(autoGenerate = true)
@@ -33,5 +33,8 @@ data class TodoItem(
     val taskListId: Int = 1,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val recurrenceParentId: Int? = null,
+    val occurrenceDate: Long? = null,
+    val isRecurringInstance: Boolean = false
 )

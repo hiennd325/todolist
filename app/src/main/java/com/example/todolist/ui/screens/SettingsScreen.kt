@@ -24,14 +24,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Upload
+ import androidx.compose.material.icons.filled.Add
+ import androidx.compose.material.icons.filled.CalendarToday
+ import androidx.compose.material.icons.filled.ColorLens
+ import androidx.compose.material.icons.filled.Delete
+ import androidx.compose.material.icons.filled.Download
+ import androidx.compose.material.icons.filled.Edit
+ import androidx.compose.material.icons.filled.Palette
+ import androidx.compose.material.icons.filled.RestartAlt
+ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -72,8 +73,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.todolist.data.export.ExportImportManager
-import com.example.todolist.data.model.CustomCategory
+ import com.example.todolist.data.export.ExportImportManager
+ import com.example.todolist.data.model.CalendarDisplayMode
+ import com.example.todolist.data.model.CustomCategory
 import com.example.todolist.data.repository.CustomCategoryRepository
 import com.example.todolist.data.settings.SettingsManager
 import com.example.todolist.ui.theme.ThemePreset
@@ -150,13 +152,19 @@ class SettingsViewModel(
         }
     }
 
-    fun updateFontSize(size: String) {
-        viewModelScope.launch {
-            settingsManager.updateFontSize(size)
-        }
-    }
+     fun updateFontSize(size: String) {
+         viewModelScope.launch {
+             settingsManager.updateFontSize(size)
+         }
+     }
 
-    fun updateCustomColors(primaryColor: String?, primaryDarkColor: String?) {
+     fun updateCalendarDisplayMode(mode: CalendarDisplayMode) {
+         viewModelScope.launch {
+             settingsManager.updateCalendarDisplayMode(mode)
+         }
+     }
+
+     fun updateCustomColors(primaryColor: String?, primaryDarkColor: String?) {
         viewModelScope.launch {
             settingsManager.updateCustomColors(primaryColor, primaryDarkColor)
         }
@@ -305,25 +313,32 @@ fun SettingsScreen(
                 )
             }
 
-            item {
-                CategoriesSection(
-                    categories = categories,
-                    onAddCategory = { showAddCategoryDialog = true },
-                    onEditCategory = { editingCategory = it },
-                    onDeleteCategory = { deletingCategory = it }
-                )
-            }
+             item {
+                 CategoriesSection(
+                     categories = categories,
+                     onAddCategory = { showAddCategoryDialog = true },
+                     onEditCategory = { editingCategory = it },
+                     onDeleteCategory = { deletingCategory = it }
+                 )
+             }
 
-            item {
-                DataSection(
-                    onExport = {
-                        exportLauncher.launch("todolist_backup_${System.currentTimeMillis()}.json")
-                    },
-                    onImport = {
-                        importLauncher.launch(arrayOf("application/json"))
-                    }
-                )
-            }
+             item {
+                 CalendarSection(
+                     currentDisplayMode = settings.calendarDisplayMode,
+                     onModeSelected = viewModel::updateCalendarDisplayMode
+                 )
+             }
+
+             item {
+                 DataSection(
+                     onExport = {
+                         exportLauncher.launch("todolist_backup_${System.currentTimeMillis()}.json")
+                     },
+                     onImport = {
+                         importLauncher.launch(arrayOf("application/json"))
+                     }
+                 )
+             }
         }
     }
 
@@ -780,11 +795,77 @@ private fun CategoryItem(
                 tint = MaterialTheme.colorScheme.error
             )
         }
-    }
-}
+     }
+ }
 
-@Composable
-private fun DataSection(
+ @Composable
+ private fun CalendarSection(
+     currentDisplayMode: CalendarDisplayMode,
+     onModeSelected: (CalendarDisplayMode) -> Unit
+ ) {
+     Card(
+         modifier = Modifier.fillMaxWidth(),
+         shape = RoundedCornerShape(12.dp),
+         colors = CardDefaults.cardColors(
+             containerColor = MaterialTheme.colorScheme.surface
+         )
+     ) {
+         Column(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(16.dp)
+         ) {
+             Row(
+                 verticalAlignment = Alignment.CenterVertically,
+                 horizontalArrangement = Arrangement.spacedBy(8.dp)
+             ) {
+                 Icon(
+                     imageVector = Icons.Default.CalendarToday,
+                     contentDescription = null,
+                     tint = MaterialTheme.colorScheme.primary
+                 )
+                 Text(
+                     text = "Calendar Display",
+                     style = MaterialTheme.typography.titleMedium,
+                     fontWeight = FontWeight.Bold
+                 )
+             }
+
+             Spacer(modifier = Modifier.height(16.dp))
+
+             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                 CalendarDisplayMode.entries.forEach { mode ->
+                     val label = when (mode) {
+                         CalendarDisplayMode.BY_CREATED -> "Created date"
+                         CalendarDisplayMode.BY_DEADLINE -> "Deadline"
+                     }
+
+                     Row(
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .clip(RoundedCornerShape(8.dp))
+                             .clickable { onModeSelected(mode) }
+                             .padding(vertical = 8.dp, horizontal = 4.dp),
+                         verticalAlignment = Alignment.CenterVertically
+                     ) {
+                         RadioButton(
+                             selected = currentDisplayMode == mode,
+                             onClick = { onModeSelected(mode) }
+                         )
+                         Spacer(modifier = Modifier.width(8.dp))
+                         Text(
+                             text = label,
+                             style = MaterialTheme.typography.bodyMedium
+                         )
+                     }
+                 }
+             }
+         }
+     }
+ }
+
+ @Composable
+ private fun DataSection(
     onExport: () -> Unit,
     onImport: () -> Unit
 ) {

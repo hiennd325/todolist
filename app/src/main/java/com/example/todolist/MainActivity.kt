@@ -27,8 +27,9 @@ import com.example.todolist.data.local.TodoDatabase
  import com.example.todolist.data.repository.SubtaskRepository
  import com.example.todolist.data.repository.TaskListRepository
  import com.example.todolist.data.repository.TodoRepository
-import com.example.todolist.data.settings.SettingsManager
-import com.example.todolist.notification.NotificationScheduler
+ import com.example.todolist.data.settings.SettingsManager
+ import com.example.todolist.data.recurrence.RecurrenceGenerator
+ import com.example.todolist.notification.NotificationScheduler
 import com.example.todolist.ui.navigation.AppNavigation
  import com.example.todolist.ui.screens.SettingsScreen
  import com.example.todolist.ui.screens.SettingsViewModel
@@ -64,12 +65,19 @@ class MainActivity : ComponentActivity() {
         notificationScheduler = NotificationScheduler(this)
         exportImportManager = ExportImportManager(this, repository, taskListRepository, subtaskRepository)
 
-        val settingsManager = SettingsManager(this)
+         val settingsManager = SettingsManager(this)
+         val recurrenceGenerator = RecurrenceGenerator(repository)
 
-        val todoViewModel: TodoViewModel = ViewModelProvider(
-            this,
-            TodoViewModel.Factory(repository, taskListRepository, subtaskRepository)
-        )[TodoViewModel::class.java]
+         val todoViewModel: TodoViewModel = ViewModelProvider(
+             this,
+             TodoViewModel.Factory(
+                 repository, 
+                 taskListRepository, 
+                 subtaskRepository, 
+                 recurrenceGenerator,
+                 notificationScheduler
+             )
+         )[TodoViewModel::class.java]
 
         val statisticsViewModel: StatisticsViewModel = ViewModelProvider(
             this,
@@ -78,7 +86,7 @@ class MainActivity : ComponentActivity() {
 
         val calendarViewModel: CalendarViewModel = ViewModelProvider(
             this,
-            CalendarViewModel.Factory(repository)
+            CalendarViewModel.Factory(repository, settingsManager)
         )[CalendarViewModel::class.java]
 
          val settingsViewModel: SettingsViewModel = ViewModelProvider(

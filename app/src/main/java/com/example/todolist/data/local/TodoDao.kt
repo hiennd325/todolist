@@ -72,6 +72,30 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items WHERE recurrenceType != 'NONE' ORDER BY createdAt DESC")
     fun getRecurringTodos(): Flow<List<TodoItem>>
 
+    // Get recurring parent tasks (tasks that are not instances themselves)
+    @Query("SELECT * FROM todo_items WHERE recurrenceParentId IS NULL AND recurrenceType != 'NONE'")
+    fun getRecurringParents(): Flow<List<TodoItem>>
+
+    // Get instances generated from a parent task
+    @Query("SELECT * FROM todo_items WHERE recurrenceParentId = :parentId ORDER BY occurrenceDate ASC")
+    fun getInstancesByParentId(parentId: Int): Flow<List<TodoItem>>
+
+    // Get all recurring instances within a date range (for calendar display)
+    @Query("SELECT * FROM todo_items WHERE isRecurringInstance = 1 AND occurrenceDate BETWEEN :start AND :end ORDER BY occurrenceDate ASC")
+    fun getInstancesInDateRange(start: Long, end: Long): Flow<List<TodoItem>>
+
+    // Count instances for a specific parent (to avoid duplicates)
+    @Query("SELECT COUNT(*) FROM todo_items WHERE recurrenceParentId = :parentId")
+    fun getInstancesCount(parentId: Int): Flow<Int>
+
+    // Get ALL recurring instances (for cleanup/debug)
+    @Query("SELECT * FROM todo_items WHERE isRecurringInstance = 1")
+    fun getAllRecurringInstances(): Flow<List<TodoItem>>
+
+    // Delete all instances for a given parent (cascade delete for recurrence)
+    @Query("DELETE FROM todo_items WHERE recurrenceParentId = :parentId")
+    suspend fun deleteInstancesByParentId(parentId: Int)
+
     // Smart Lists queries
     @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND deadline IS NOT NULL AND deadline <= :endOfDay ORDER BY deadline ASC")
     fun getTodosDueToday(endOfDay: Long): Flow<List<TodoItem>>

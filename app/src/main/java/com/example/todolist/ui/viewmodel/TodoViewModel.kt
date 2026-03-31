@@ -12,6 +12,8 @@ import com.example.todolist.data.model.TodoItem
 import com.example.todolist.data.repository.SubtaskRepository
 import com.example.todolist.data.repository.TaskListRepository
 import com.example.todolist.data.repository.TodoRepository
+import com.example.todolist.data.recurrence.RecurrenceGenerator
+import com.example.todolist.notification.NotificationScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +22,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+ import kotlinx.coroutines.flow.first
+ import kotlinx.coroutines.launch
 
 enum class SortMode {
     CREATED_AT, DEADLINE, PRIORITY, MANUAL
@@ -53,7 +56,9 @@ data class TodoUiState(
 class TodoViewModel(
     private val repository: TodoRepository,
     private val taskListRepository: TaskListRepository,
-    private val subtaskRepository: SubtaskRepository
+    private val subtaskRepository: SubtaskRepository,
+    private val recurrenceGenerator: RecurrenceGenerator,
+    private val notificationScheduler: NotificationScheduler
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -277,7 +282,7 @@ class TodoViewModel(
         taskListId: Int = _currentTaskListId.value
     ) {
         viewModelScope.launch {
-            repository.insert(
+            val insertedId = repository.insert(
                 TodoItem(
                     title = title,
                     description = description,
@@ -291,12 +296,83 @@ class TodoViewModel(
                     taskListId = taskListId
                 )
             )
+            // Generate instances if recurring
+            if (recurrenceType != RecurrenceType.NONE) {
+                val parentTodo = repository.getTodoByIdSync(insertedId.toInt())
+                parentTodo?.let {
+                    recurrenceGenerator.generateInstances(it)
+                    // Schedule reminders for the generated instances
+                    val instances = repository.getInstancesByParentId(it.id).first()
+                    instances.forEach { instance ->
+                        instance.reminderTime?.let { reminder ->
+                            if (reminder > System.currentTimeMillis()) {
+                                notificationScheduler.scheduleReminder(instance)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Schedule reminder for non-recurring task if exists
+                if (reminderTime != null && reminderTime > System.currentTimeMillis()) {
+                    val todo = repository.getTodoByIdSync(insertedId.toInt())
+                    todo?.let { notificationScheduler.scheduleReminder(it) }
+                }
+            }
         }
     }
 
     fun updateTodo(todo: TodoItem) {
         viewModelScope.launch {
+            val oldTodo = repository.getTodoByIdSync(todo.id)
             repository.update(todo.copy(updatedAt = System.currentTimeMillis()))
+
+            // Cancel old reminder for this todo if it had one
+            if (oldTodo?.reminderTime != null) {
+                notificationScheduler.cancelReminder(todo.id)
+            }
+
+            // Handle recurrence changes
+            if (todo.recurrenceType != RecurrenceType.NONE) {
+                val recurrenceChanged = oldTodo?.recurrenceType != todo.recurrenceType ||
+                                       oldTodo?.deadline != todo.deadline
+                val existingCount = repository.getInstancesCount(todo.id).first()
+                
+                if (existingCount == 0 || recurrenceChanged) {
+                    // Delete old instances and regenerate
+                    recurrenceGenerator.deleteInstances(todo.id)
+                    recurrenceGenerator.generateInstances(todo)
+                    // Schedule reminders for new instances
+                    val instances = repository.getInstancesByParentId(todo.id).first()
+                    instances.forEach { instance ->
+                        instance.reminderTime?.let { reminder ->
+                            if (reminder > System.currentTimeMillis()) {
+                                notificationScheduler.scheduleReminder(instance)
+                            }
+                        }
+                    }
+                } else {
+                    // Instances exist but recurrence settings may have changed on parent; could update their reminders if needed
+                    // For simplicity, instances keep their own reminderTimes which were copied at generation
+                }
+            } else {
+                // Changed from recurring to non-recurring: delete instances
+                if (oldTodo?.recurrenceType != RecurrenceType.NONE) {
+                    // Cancel reminders for all instances before deleting
+                    val instances = repository.getInstancesByParentId(todo.id).first()
+                    instances.forEach { instance ->
+                        if (instance.reminderTime != null) {
+                            notificationScheduler.cancelReminder(instance.id)
+                        }
+                    }
+                    recurrenceGenerator.deleteInstances(todo.id)
+                }
+                // Schedule reminder for the non-recurring todo if updated reminderTime exists
+                todo.reminderTime?.let { reminder ->
+                    if (reminder > System.currentTimeMillis()) {
+                        notificationScheduler.scheduleReminder(todo)
+                    }
+                }
+            }
         }
     }
 
@@ -314,12 +390,41 @@ class TodoViewModel(
 
     fun deleteTodo(todo: TodoItem) {
         viewModelScope.launch {
+            // Cancel reminder if exists
+            if (todo.reminderTime != null) {
+                notificationScheduler.cancelReminder(todo.id)
+            }
             repository.delete(todo)
+            // If this is a recurring parent, also delete its instances and cancel their reminders
+            if (todo.recurrenceType != RecurrenceType.NONE && !todo.isRecurringInstance) {
+                val instances = repository.getInstancesByParentId(todo.id).first()
+                instances.forEach { instance ->
+                    if (instance.reminderTime != null) {
+                        notificationScheduler.cancelReminder(instance.id)
+                    }
+                }
+                recurrenceGenerator.deleteInstances(todo.id)
+            }
         }
     }
 
     fun deleteTodoById(id: Int) {
         viewModelScope.launch {
+            val todo = repository.getTodoByIdSync(id)
+            if (todo != null) {
+                if (todo.reminderTime != null) {
+                    notificationScheduler.cancelReminder(todo.id)
+                }
+                if (todo.recurrenceType != RecurrenceType.NONE && !todo.isRecurringInstance) {
+                    val instances = repository.getInstancesByParentId(todo.id).first()
+                    instances.forEach { instance ->
+                        if (instance.reminderTime != null) {
+                            notificationScheduler.cancelReminder(instance.id)
+                        }
+                    }
+                    recurrenceGenerator.deleteInstances(todo.id)
+                }
+            }
             repository.deleteById(id)
         }
     }
@@ -449,12 +554,14 @@ class TodoViewModel(
     class Factory(
         private val repository: TodoRepository,
         private val taskListRepository: TaskListRepository,
-        private val subtaskRepository: SubtaskRepository
+        private val subtaskRepository: SubtaskRepository,
+        private val recurrenceGenerator: RecurrenceGenerator,
+        private val notificationScheduler: NotificationScheduler
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(TodoViewModel::class.java)) {
-                return TodoViewModel(repository, taskListRepository, subtaskRepository) as T
+                return TodoViewModel(repository, taskListRepository, subtaskRepository, recurrenceGenerator, notificationScheduler) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

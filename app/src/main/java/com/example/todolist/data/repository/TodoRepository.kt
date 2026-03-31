@@ -107,4 +107,18 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun deleteTodosByIds(ids: List<Int>) = todoDao.deleteTodosByIds(ids)
 
     suspend fun updateSortOrder(id: Int, sortOrder: Int) = todoDao.updateSortOrder(id, sortOrder)
+    suspend fun deleteInstancesByParentId(parentId: Int) = todoDao.deleteInstancesByParentId(parentId)
+
+    // Recurring Tasks - Parents and Instances
+    fun getRecurringParents(): Flow<List<TodoItem>> = todoDao.getRecurringParents()
+    
+    fun getInstancesByParentId(parentId: Int): Flow<List<TodoItem>> = 
+        todoDao.getInstancesByParentId(parentId)
+    
+    fun getInstancesInDateRange(start: Long, end: Long): Flow<List<TodoItem>> =
+        todoDao.getInstancesInDateRange(start, end)
+    
+    fun getInstancesCount(parentId: Int): Flow<Int> = todoDao.getInstancesCount(parentId)
+    
+    fun getAllRecurringInstances(): Flow<List<TodoItem>> = todoDao.getAllRecurringInstances()
 }

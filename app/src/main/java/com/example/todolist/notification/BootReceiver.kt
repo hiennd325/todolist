@@ -26,9 +26,6 @@ class BootReceiver : BroadcastReceiver() {
                     val todos = repository.getTodosWithReminders(System.currentTimeMillis()).first()
                     todos.forEach { todo ->
                         scheduler.scheduleReminder(todo)
-                        if (todo.recurrenceType != com.example.todolist.data.model.RecurrenceType.NONE) {
-                            scheduler.scheduleRecurringReminder(todo)
-                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

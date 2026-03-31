@@ -72,6 +72,9 @@ class ExportImportManager(
                     put("deadline", todo.deadline ?: JSONObject.NULL)
                     put("reminderTime", todo.reminderTime ?: JSONObject.NULL)
                     put("recurrenceType", todo.recurrenceType.name)
+                    put("recurrenceParentId", todo.recurrenceParentId ?: JSONObject.NULL)
+                    put("occurrenceDate", todo.occurrenceDate ?: JSONObject.NULL)
+                    put("isRecurringInstance", todo.isRecurringInstance)
                     put("taskListId", todo.taskListId)
                     put("createdAt", todo.createdAt)
                     put("updatedAt", todo.updatedAt)
@@ -82,7 +85,7 @@ class ExportImportManager(
             }
             root.put("todos", todosArray)
             root.put("exportedAt", System.currentTimeMillis())
-            root.put("version", 1)
+            root.put("version", 2)
 
             // Write to file
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -158,12 +161,15 @@ class ExportImportManager(
                         },
                         deadline = if (obj.isNull("deadline")) null else obj.optLong("deadline"),
                         reminderTime = if (obj.isNull("reminderTime")) null else obj.optLong("reminderTime"),
-                        recurrenceType = try {
-                            RecurrenceType.fromString(obj.optString("recurrenceType", "NONE"))
-                        } catch (e: Exception) {
-                            RecurrenceType.NONE
-                        },
-                        taskListId = actualTaskListId,
+                         recurrenceType = try {
+                             RecurrenceType.fromString(obj.optString("recurrenceType", "NONE"))
+                         } catch (e: Exception) {
+                             RecurrenceType.NONE
+                         },
+                         recurrenceParentId = if (obj.isNull("recurrenceParentId")) null else obj.optInt("recurrenceParentId"),
+                         occurrenceDate = if (obj.isNull("occurrenceDate")) null else obj.optLong("occurrenceDate"),
+                         isRecurringInstance = obj.optBoolean("isRecurringInstance", false),
+                         taskListId = actualTaskListId,
                         createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
                         updatedAt = obj.optLong("updatedAt", System.currentTimeMillis()),
                         sortOrder = obj.optInt("sortOrder", 0)

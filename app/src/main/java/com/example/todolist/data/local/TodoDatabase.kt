@@ -14,7 +14,7 @@ import com.example.todolist.data.model.TodoItem
 
 @Database(
     entities = [TodoItem::class, TaskList::class, Subtask::class, CustomCategory::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -100,6 +100,19 @@ abstract class TodoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add recurrence-related columns
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `recurrenceParentId` INTEGER")
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `occurrenceDate` INTEGER")
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `isRecurringInstance` INTEGER NOT NULL DEFAULT 0")
+                
+                // Create indices
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_todo_items_recurrenceParentId` ON `todo_items` (`recurrenceParentId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_todo_items_occurrenceDate` ON `todo_items` (`occurrenceDate`)")
+            }
+        }
+
         fun getDatabase(context: Context): TodoDatabase {
             return INSTANCE ?: synchronized(this) {
                 val callback = object : RoomDatabase.Callback() {
@@ -120,7 +133,7 @@ abstract class TodoDatabase : RoomDatabase() {
                     TodoDatabase::class.java,
                     "todo_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(callback)
                 .build()
                 INSTANCE = instance

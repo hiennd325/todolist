@@ -3,9 +3,11 @@ package com.example.todolist.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.todolist.data.model.TodoItem
-import com.example.todolist.data.repository.TodoRepository
-import kotlinx.coroutines.flow.*
+ import com.example.todolist.data.model.CalendarDisplayMode
+ import com.example.todolist.data.model.TodoItem
+ import com.example.todolist.data.repository.TodoRepository
+ import com.example.todolist.data.settings.SettingsManager
+ import kotlinx.coroutines.flow.*
 import java.util.*
 
 data class CalendarUiState(
@@ -17,7 +19,8 @@ data class CalendarUiState(
 )
 
 class CalendarViewModel(
-    private val todoRepository: TodoRepository
+    private val todoRepository: TodoRepository,
+    private val settingsManager: SettingsManager
 ) : ViewModel() {
 
     private val _currentMonth = MutableStateFlow(Calendar.getInstance())
@@ -26,12 +29,21 @@ class CalendarViewModel(
     private val _selectedDate = MutableStateFlow<String?>(null)
     val selectedDate: StateFlow<String?> = _selectedDate
 
+    val displayMode: StateFlow<CalendarDisplayMode> = settingsManager.settingsFlow
+        .map { it.calendarDisplayMode }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = CalendarDisplayMode.BY_CREATED
+        )
+
     val uiState: StateFlow<CalendarUiState> = combine(
         _currentMonth,
         _selectedDate,
-        todoRepository.allTodos
-    ) { currentMonth, selectedDate, allTodos ->
-        val todosByDate = groupTodosByDate(allTodos)
+        todoRepository.allTodos,
+        displayMode
+    ) { currentMonth, selectedDate, allTodos, mode ->
+        val todosByDate = groupTodosByDate(allTodos, mode)
         val selectedDateTodos = if (selectedDate != null) {
             todosByDate[selectedDate] ?: emptyList()
         } else {
@@ -51,11 +63,23 @@ class CalendarViewModel(
         initialValue = CalendarUiState()
     )
 
-    private fun groupTodosByDate(todos: List<TodoItem>): Map<String, List<TodoItem>> {
+    private fun groupTodosByDate(
+        todos: List<TodoItem>, 
+        mode: CalendarDisplayMode
+    ): Map<String, List<TodoItem>> {
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
         return todos.groupBy { todo ->
-            val date = Date(todo.createdAt)
-            dateFormat.format(date)
+            val timestamp = when (mode) {
+                CalendarDisplayMode.BY_DEADLINE -> {
+                    when {
+                        todo.isRecurringInstance -> todo.occurrenceDate
+                        todo.deadline != null -> todo.deadline
+                        else -> todo.createdAt
+                    }
+                }
+                CalendarDisplayMode.BY_CREATED -> todo.createdAt
+            }
+            dateFormat.format(Date(timestamp ?: 0L))
         }
     }
 
@@ -82,12 +106,13 @@ class CalendarViewModel(
     }
 
     class Factory(
-        private val todoRepository: TodoRepository
+        private val todoRepository: TodoRepository,
+        private val settingsManager: SettingsManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(CalendarViewModel::class.java)) {
-                return CalendarViewModel(todoRepository) as T
+                return CalendarViewModel(todoRepository, settingsManager) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
