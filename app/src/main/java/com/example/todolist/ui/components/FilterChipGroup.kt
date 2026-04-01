@@ -50,165 +50,154 @@ fun FilterChipGroup(
 ) {
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    Row(
+        modifier = modifier.horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Quick Filters Section
-        Row(
-            modifier = Modifier.horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // All
-            FilterChip(
-                selected = filterMode == FilterMode.ALL,
-                onClick = { onFilterModeChanged(FilterMode.ALL) },
-                label = { Text("All") },
-                leadingIcon = if (filterMode == FilterMode.ALL) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-
-            // Starred
-            FilterChip(
-                selected = filterMode == FilterMode.STARRED,
-                onClick = {
-                    if (filterMode == FilterMode.STARRED) {
-                        onFilterModeChanged(FilterMode.ALL)
-                    } else {
-                        onFilterModeChanged(FilterMode.STARRED)
-                    }
-                },
-                label = { Text("Starred") },
-                leadingIcon = {
+        // ... existing chips ...
+        // All
+        FilterChip(
+            selected = filterMode == FilterMode.ALL,
+            onClick = { onFilterModeChanged(FilterMode.ALL) },
+            label = { Text("All") },
+            leadingIcon = if (filterMode == FilterMode.ALL) {
+                {
                     Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = if (filterMode == FilterMode.STARRED) 
-                        Color(0xFFFFD700).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
-                    selectedLabelColor = if (filterMode == FilterMode.STARRED) 
-                        Color(0xFFFFA500) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-
-            // Today
-            FilterChip(
-                selected = filterMode == FilterMode.TODAY,
-                onClick = {
-                    if (filterMode == FilterMode.TODAY) {
-                        onFilterModeChanged(FilterMode.ALL)
-                    } else {
-                        onFilterModeChanged(FilterMode.TODAY)
-                    }
-                },
-                label = { Text("Today") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Today,
+                        imageVector = Icons.Default.List,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                 }
+            } else null,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
+        )
 
-            // Upcoming
-            FilterChip(
-                selected = filterMode == FilterMode.UPCOMING,
-                onClick = {
-                    if (filterMode == FilterMode.UPCOMING) {
-                        onFilterModeChanged(FilterMode.ALL)
-                    } else {
-                        onFilterModeChanged(FilterMode.UPCOMING)
-                    }
-                },
-                label = { Text("Upcoming") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Upcoming,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
+        // Starred
+        FilterChip(
+            selected = filterMode == FilterMode.STARRED,
+            onClick = {
+                if (filterMode == FilterMode.STARRED) {
+                    onFilterModeChanged(FilterMode.ALL)
+                } else {
+                    onFilterModeChanged(FilterMode.STARRED)
                 }
-            )
-
-            // Overdue
-            FilterChip(
-                selected = filterMode == FilterMode.OVERDUE,
-                onClick = {
-                    if (filterMode == FilterMode.OVERDUE) {
-                        onFilterModeChanged(FilterMode.ALL)
-                    } else {
-                        onFilterModeChanged(FilterMode.OVERDUE)
-                    }
-                },
-                label = { Text("Overdue") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+            },
+            label = { Text("Starred") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
                 )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = if (filterMode == FilterMode.STARRED) 
+                    Color(0xFFFFD700).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                selectedLabelColor = if (filterMode == FilterMode.STARRED) 
+                    Color(0xFFFFA500) else MaterialTheme.colorScheme.onSurfaceVariant
             )
+        )
 
-            // Completed Today
-            FilterChip(
-                selected = filterMode == FilterMode.COMPLETED_TODAY,
-                onClick = {
-                    if (filterMode == FilterMode.COMPLETED_TODAY) {
-                        onFilterModeChanged(FilterMode.ALL)
-                    } else {
-                        onFilterModeChanged(FilterMode.COMPLETED_TODAY)
-                    }
-                },
-                label = { Text("Done Today") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
+        // Today
+        FilterChip(
+            selected = filterMode == FilterMode.TODAY,
+            onClick = {
+                if (filterMode == FilterMode.TODAY) {
+                    onFilterModeChanged(FilterMode.ALL)
+                } else {
+                    onFilterModeChanged(FilterMode.TODAY)
                 }
+            },
+            label = { Text("Today") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Today,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
+
+        // Upcoming
+        FilterChip(
+            selected = filterMode == FilterMode.UPCOMING,
+            onClick = {
+                if (filterMode == FilterMode.UPCOMING) {
+                    onFilterModeChanged(FilterMode.ALL)
+                } else {
+                    onFilterModeChanged(FilterMode.UPCOMING)
+                }
+            },
+            label = { Text("Upcoming") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Upcoming,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
+
+        // Overdue
+        FilterChip(
+            selected = filterMode == FilterMode.OVERDUE,
+            onClick = {
+                if (filterMode == FilterMode.OVERDUE) {
+                    onFilterModeChanged(FilterMode.ALL)
+                } else {
+                    onFilterModeChanged(FilterMode.OVERDUE)
+                }
+            },
+            label = { Text("Overdue") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
             )
-        }
+        )
+
+        // Completed Today
+        FilterChip(
+            selected = filterMode == FilterMode.COMPLETED_TODAY,
+            onClick = {
+                if (filterMode == FilterMode.COMPLETED_TODAY) {
+                    onFilterModeChanged(FilterMode.ALL)
+                } else {
+                    onFilterModeChanged(FilterMode.COMPLETED_TODAY)
+                }
+            },
+            label = { Text("Done Today") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
 
         // Show/Hide Completed
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilterChip(
-                selected = !showCompleted,
-                onClick = { onShowCompletedChanged(!showCompleted) },
-                label = { Text(if (!showCompleted) "Show completed tasks" else "Hide completed tasks") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = if (!showCompleted) Icons.Default.CheckCircle else Icons.Default.List,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
-        }
+        FilterChip(
+            selected = !showCompleted,
+            onClick = { onShowCompletedChanged(!showCompleted) },
+            label = { Text(if (!showCompleted) "Show completed" else "Hide completed") },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (!showCompleted) Icons.Default.CheckCircle else Icons.Default.List,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
     }
 }

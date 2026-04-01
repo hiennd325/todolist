@@ -103,6 +103,12 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -125,9 +131,16 @@ fun TodoListScreen(
     var editingTodo by remember { mutableStateOf<TodoItem?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showOptionsMenu by remember { mutableStateOf(false) }
-    var searchActive by remember { mutableStateOf(false) }
     var expandedTodoId by remember { mutableStateOf<Int?>(null) }
     var showMoveToListDialog by remember { mutableStateOf(false) }
+    var isSearchMode by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isSearchMode) {
+        if (isSearchMode) {
+            focusRequester.requestFocus()
+        }
+    }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -235,6 +248,27 @@ fun TodoListScreen(
                                 text = "${selectedTodoIds.size} selected",
                                 style = MaterialTheme.typography.titleLarge
                             )
+                        } else if (isSearchMode) {
+                            TextField(
+                                value = searchQuery,
+                                onValueChange = viewModel::setSearchQuery,
+                                placeholder = { Text("Search tasks...", color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester),
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    cursorColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                textStyle = MaterialTheme.typography.titleLarge
+                            )
                         } else {
                             Column {
                                 Text(
@@ -271,6 +305,16 @@ fun TodoListScreen(
                                     contentDescription = "Exit selection mode"
                                 )
                             }
+                        } else if (isSearchMode) {
+                            IconButton(onClick = { 
+                                isSearchMode = false
+                                viewModel.setSearchQuery("")
+                            }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
                         } else {
                             IconButton(onClick = {
                                 scope.launch { drawerState.open() }
@@ -296,7 +340,85 @@ fun TodoListScreen(
                                     contentDescription = if (selectedTodoIds.size == uiState.todos.size) "Deselect all" else "Select all"
                                 )
                             }
+                        } else if (isSearchMode) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear search"
+                                    )
+                                }
+                            }
                         } else {
+                            // Search icon
+                            IconButton(onClick = { isSearchMode = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search tasks"
+                                )
+                            }
+                            // Sort button
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sort,
+                                        contentDescription = "Sort"
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("By Created At") },
+                                        onClick = {
+                                            viewModel.setSortMode(SortMode.CREATED_AT)
+                                            showSortMenu = false
+                                        },
+                                        trailingIcon = {
+                                            if (uiState.sortMode == SortMode.CREATED_AT) {
+                                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("By Deadline") },
+                                        onClick = {
+                                            viewModel.setSortMode(SortMode.DEADLINE)
+                                            showSortMenu = false
+                                        },
+                                        trailingIcon = {
+                                            if (uiState.sortMode == SortMode.DEADLINE) {
+                                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("By Priority") },
+                                        onClick = {
+                                            viewModel.setSortMode(SortMode.PRIORITY)
+                                            showSortMenu = false
+                                        },
+                                        trailingIcon = {
+                                            if (uiState.sortMode == SortMode.PRIORITY) {
+                                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Manual") },
+                                        onClick = {
+                                            viewModel.setSortMode(SortMode.MANUAL)
+                                            showSortMenu = false
+                                        },
+                                        trailingIcon = {
+                                            if (uiState.sortMode == SortMode.MANUAL) {
+                                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                             // Theme toggle
                             IconButton(onClick = onToggleTheme) {
                                 Icon(
@@ -470,132 +592,6 @@ fun TodoListScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Search bar
-                SearchBar(
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            query = searchQuery,
-                            onQueryChange = viewModel::setSearchQuery,
-                            onSearch = { searchActive = false },
-                            expanded = searchActive,
-                            onExpandedChange = { searchActive = it },
-                            placeholder = { Text("Search tasks...") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search"
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Clear"
-                                        )
-                                    }
-                                }
-                            }
-                        )
-                    },
-                    expanded = searchActive,
-                    onExpandedChange = { searchActive = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = {}
-                )
-
-                // Filter and Sort row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Filter:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Box {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = when (uiState.sortMode) {
-                                    SortMode.CREATED_AT -> "Created At"
-                                    SortMode.DEADLINE -> "Deadline"
-                                    SortMode.PRIORITY -> "Priority"
-                                    SortMode.MANUAL -> "Manual"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.Sort,
-                                    contentDescription = "Sort"
-                                )
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("By Created At") },
-                                onClick = {
-                                    viewModel.setSortMode(SortMode.CREATED_AT)
-                                    showSortMenu = false
-                                },
-                                trailingIcon = {
-                                    if (uiState.sortMode == SortMode.CREATED_AT) {
-                                        Text("✓", color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("By Deadline") },
-                                onClick = {
-                                    viewModel.setSortMode(SortMode.DEADLINE)
-                                    showSortMenu = false
-                                },
-                                trailingIcon = {
-                                    if (uiState.sortMode == SortMode.DEADLINE) {
-                                        Text("✓", color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("By Priority") },
-                                onClick = {
-                                    viewModel.setSortMode(SortMode.PRIORITY)
-                                    showSortMenu = false
-                                },
-                                trailingIcon = {
-                                    if (uiState.sortMode == SortMode.PRIORITY) {
-                                        Text("✓", color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Manual") },
-                                onClick = {
-                                    viewModel.setSortMode(SortMode.MANUAL)
-                                    showSortMenu = false
-                                },
-                                trailingIcon = {
-                                    if (uiState.sortMode == SortMode.MANUAL) {
-                                        Text("✓", color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
 
                 // Filter chips
                 FilterChipGroup(
