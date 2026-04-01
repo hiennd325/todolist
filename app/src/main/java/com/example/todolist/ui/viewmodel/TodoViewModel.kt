@@ -75,6 +75,7 @@ class TodoViewModel(
 
     private val _selectedTodoIds = MutableStateFlow<Set<Int>>(emptySet())
     private val _isSelectionMode = MutableStateFlow(false)
+    private val _tempHiddenTodoIds = MutableStateFlow<Set<Int>>(emptySet())
 
     val currentTaskListId: StateFlow<Int> = _currentTaskListId
 
@@ -141,7 +142,8 @@ class TodoViewModel(
         repository.completedCount,
         repository.starredCount,
         _selectedTodoIds,
-        _isSelectionMode
+        _isSelectionMode,
+        _tempHiddenTodoIds
     ) { flows ->
         val todos = flows[0] as List<TodoItem>
         val query = flows[1] as String
@@ -157,11 +159,14 @@ class TodoViewModel(
         val starred = flows[11] as Int
         val selectedIds = flows[12] as Set<Int>
         val isSelectionMode = flows[13] as Boolean
+        val tempHiddenIds = flows[14] as Set<Int>
+
+        val visibleTodos = todos.filter { it.id !in tempHiddenIds }
 
         val filteredTodos = if (showCompleted) {
-            todos
+            visibleTodos
         } else {
-            todos.filter { !it.isCompleted }
+            visibleTodos.filter { !it.isCompleted }
         }
 
         TodoUiState(
@@ -247,6 +252,15 @@ class TodoViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun setTodoVisibility(todoId: Int, visible: Boolean) {
+        val current = _tempHiddenTodoIds.value
+        _tempHiddenTodoIds.value = if (visible) {
+            current - todoId
+        } else {
+            current + todoId
+        }
     }
 
     fun setFilterMode(mode: FilterMode) {
@@ -395,6 +409,7 @@ class TodoViewModel(
                 notificationScheduler.cancelReminder(todo.id)
             }
             repository.delete(todo)
+            setTodoVisibility(todo.id, true)
             // If this is a recurring parent, also delete its instances and cancel their reminders
             if (todo.recurrenceType != RecurrenceType.NONE && !todo.isRecurringInstance) {
                 val instances = repository.getInstancesByParentId(todo.id).first()

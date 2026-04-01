@@ -727,11 +727,14 @@ fun TodoListScreen(
                                             onSelectionModeChange = { viewModel.toggleSelectionMode() },
                                             onShowUndoSnackbar = { undoAction ->
                                                 scope.launch {
+                                                    viewModel.setTodoVisibility(todo.id, false)
                                                     val result = snackbarHostState.showSnackbar(
                                                         message = "Task deleted",
                                                         actionLabel = "Undo"
                                                     )
-                                                    if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                    if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                        viewModel.setTodoVisibility(todo.id, true)
+                                                    } else {
                                                         undoAction()
                                                     }
                                                 }
@@ -768,11 +771,14 @@ fun TodoListScreen(
                                     onSelectionModeChange = { viewModel.toggleSelectionMode() },
                                     onShowUndoSnackbar = { undoAction ->
                                         scope.launch {
+                                            viewModel.setTodoVisibility(todo.id, false)
                                             val result = snackbarHostState.showSnackbar(
                                                 message = "Task deleted",
                                                 actionLabel = "Undo"
                                             )
-                                            if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                viewModel.setTodoVisibility(todo.id, true)
+                                            } else {
                                                 undoAction()
                                             }
                                         }

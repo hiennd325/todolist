@@ -51,7 +51,8 @@ class RecurrenceGenerator(
         val occurrences = calculateOccurrences(
             startDate = startTimestamp,
             recurrenceType = parentTask.recurrenceType,
-            horizon = horizon
+            horizon = horizon,
+            skipDeadline = parentTask.deadline
         )
         
         occurrences.forEach { occurrenceDate ->
@@ -105,42 +106,36 @@ class RecurrenceGenerator(
     private fun calculateOccurrences(
         startDate: Long,
         recurrenceType: RecurrenceType,
-        horizon: Long
+        horizon: Long,
+        skipDeadline: Long? = null
     ): List<Long> {
         val occurrences = mutableListOf<Long>()
         val cal = Calendar.getInstance().apply { timeInMillis = startDate }
         val now = Calendar.getInstance()
         
+        // Move to the first occurrence that is not in the past relative to 'now'
+        val addField: Int
+        val amount: Int
         when (recurrenceType) {
-            RecurrenceType.DAILY -> {
-                while (cal.timeInMillis < now.timeInMillis) cal.add(Calendar.DAY_OF_YEAR, 1)
-                while (cal.timeInMillis <= horizon) {
-                    occurrences.add(cal.timeInMillis)
-                    cal.add(Calendar.DAY_OF_YEAR, 1)
-                }
-            }
-            RecurrenceType.WEEKLY -> {
-                while (cal.timeInMillis < now.timeInMillis) cal.add(Calendar.DAY_OF_YEAR, 7)
-                while (cal.timeInMillis <= horizon) {
-                    occurrences.add(cal.timeInMillis)
-                    cal.add(Calendar.DAY_OF_YEAR, 7)
-                }
-            }
-            RecurrenceType.MONTHLY -> {
-                while (cal.timeInMillis < now.timeInMillis) cal.add(Calendar.MONTH, 1)
-                while (cal.timeInMillis <= horizon) {
-                    occurrences.add(cal.timeInMillis)
-                    cal.add(Calendar.MONTH, 1)
-                }
-            }
-            RecurrenceType.YEARLY -> {
-                while (cal.timeInMillis < now.timeInMillis) cal.add(Calendar.YEAR, 1)
-                while (cal.timeInMillis <= horizon) {
-                    occurrences.add(cal.timeInMillis)
-                    cal.add(Calendar.YEAR, 1)
-                }
-            }
-            RecurrenceType.NONE -> {}
+            RecurrenceType.DAILY -> { addField = Calendar.DAY_OF_YEAR; amount = 1 }
+            RecurrenceType.WEEKLY -> { addField = Calendar.DAY_OF_YEAR; amount = 7 }
+            RecurrenceType.MONTHLY -> { addField = Calendar.MONTH; amount = 1 }
+            RecurrenceType.YEARLY -> { addField = Calendar.YEAR; amount = 1 }
+            else -> return emptyList()
+        }
+
+        while (cal.timeInMillis < now.timeInMillis) {
+            cal.add(addField, amount)
+        }
+        
+        // Skip the first occurrence if it's already represented by the parent's deadline
+        if (skipDeadline != null && cal.timeInMillis == skipDeadline) {
+            cal.add(addField, amount)
+        }
+
+        while (cal.timeInMillis <= horizon) {
+            occurrences.add(cal.timeInMillis)
+            cal.add(addField, amount)
         }
         
         return occurrences

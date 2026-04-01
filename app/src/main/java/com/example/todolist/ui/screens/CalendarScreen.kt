@@ -127,7 +127,10 @@ fun CalendarScreen(viewModel: CalendarViewModel) {
                         onToggleComplete = {},
                         onToggleStarred = {},
                         onEdit = {},
-                        onDelete = {}
+                        onDelete = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
                     )
                 }
             }

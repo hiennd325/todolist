@@ -60,6 +60,7 @@ fun SwipeableTodoItemCard(
         confirmValueChange = { dismissValue ->
             when (dismissValue) {
                 SwipeToDismissBoxValue.EndToStart -> {
+                    // Swipe Left: Delete
                     if (onShowUndoSnackbar != null) {
                         onShowUndoSnackbar(onDelete)
                     } else {
@@ -68,16 +69,14 @@ fun SwipeableTodoItemCard(
                     true
                 }
                 SwipeToDismissBoxValue.StartToEnd -> {
+                    // Swipe Right: Complete
                     onToggleComplete()
-                    true
+                    false // Snap back
                 }
-                SwipeToDismissBoxValue.Settled -> {
-                    hasTriggeredHaptic = false
-                    false
-                }
+                SwipeToDismissBoxValue.Settled -> false
             }
         },
-        positionalThreshold = { it * 0.5f }
+        positionalThreshold = { it * 0.25f }
     )
 
     LaunchedEffect(dismissState.targetValue) {
@@ -102,29 +101,23 @@ fun SwipeableTodoItemCard(
         backgroundContent = {
             val backgroundColor by animateColorAsState(
                 targetValue = when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.StartToEnd -> Color(0xFF4CAF50).copy(alpha = 0.9f)
-                    SwipeToDismissBoxValue.EndToStart -> Color(0xFFF44336).copy(alpha = 0.9f)
+                    SwipeToDismissBoxValue.StartToEnd -> Color(0xFF4CAF50)
+                    SwipeToDismissBoxValue.EndToStart -> Color(0xFFF44336)
                     SwipeToDismissBoxValue.Settled -> Color.Transparent
                 },
                 label = "backgroundColor"
             )
 
             val iconScale by animateFloatAsState(
-                targetValue = if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) 1.3f else 0f,
+                targetValue = if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) 1.2f else 0.8f,
                 label = "iconScale"
-            )
-
-            val progress = dismissState.progress
-            val iconAlpha by animateFloatAsState(
-                targetValue = if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) 1f else 0f,
-                label = "iconAlpha"
             )
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(backgroundColor, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 32.dp),
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
